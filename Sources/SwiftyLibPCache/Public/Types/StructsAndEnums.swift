@@ -127,5 +127,5 @@ public struct Counter: Sendable {
     }
 }
 
-public typealias UnsafeBuffer = (pointer: UnsafeRawPointer, count: Int)
-public typealias UnsafeMutableBuffer = (pointer: UnsafeMutableRawPointer, count: Int)
+public typealias CBuffer = (pointer: UnsafeRawPointer, count: Int)
+public typealias CMutableBuffer = (pointer: UnsafeMutableRawPointer, count: Int)

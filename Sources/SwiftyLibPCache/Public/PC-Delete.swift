@@ -8,7 +8,7 @@
 
 public extension PersistentCache {
     func deletePage(
-        id: UnsafeBuffer,
+        id: CBuffer,
         wipeDataFile: Bool = false,
         durable: Bool = true,
     ) throws {
@@ -25,7 +25,7 @@ public extension PersistentCache {
     }
     
     func deletePages(
-        ids: UnsafeBuffer,
+        ids: CBuffer,
         wipeDataFile: Bool = false,
         durable: Bool = true,
     ) throws {
@@ -69,8 +69,8 @@ public extension PersistentCache {
     }
     
     func deletePagesRange(
-        first: UnsafeBuffer,
-        last: UnsafeBuffer,
+        first: CBuffer,
+        last: CBuffer,
         wipeDataFile: Bool = false,
         durable: Bool = true,
     ) throws {

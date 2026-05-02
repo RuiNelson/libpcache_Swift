@@ -7,7 +7,7 @@
 // MARK: - C
 
 public extension PersistentCache {
-    func getPage(id: UnsafeBuffer, data: UnsafeMutableBuffer) throws {
+    func getPage(id: CBuffer, data: CMutableBuffer) throws {
         guard id.count == configuration.idWidthInt else {
             throw InvalidCall.idBufferIsNotTheExpectedSize
         }
@@ -19,7 +19,7 @@ public extension PersistentCache {
         try b_getPage(handle: handle, id: id.pointer, pageData: data.pointer)
     }
     
-    func getPages(ids: UnsafeBuffer, data: UnsafeMutableBuffer) throws {
+    func getPages(ids: CBuffer, data: CMutableBuffer) throws {
         guard ids.count % configuration.idWidthInt == 0 else {
             throw InvalidCall.idBufferIsNotTheExpectedSize
         }
@@ -42,7 +42,7 @@ public extension PersistentCache {
     
     func getPages(
         counter: Counter,
-        data: UnsafeMutableBuffer,
+        data: CMutableBuffer,
     ) throws {
         guard counter.templateWidth == configuration.idWidthInt else {
             throw InvalidCall.idBufferIsNotTheExpectedSize
@@ -68,10 +68,10 @@ public extension PersistentCache {
     }
     
     func getPagesRange(
-        first: UnsafeBuffer,
-        last: UnsafeBuffer,
-        idsOut: UnsafeMutableBuffer,
-        pagesOut: UnsafeMutableBuffer,
+        first: CBuffer,
+        last: CBuffer,
+        idsOut: CMutableBuffer,
+        pagesOut: CMutableBuffer,
     ) throws -> Int {
         guard first.count == configuration.idWidthInt else {
             throw InvalidCall.idBufferIsNotTheExpectedSize

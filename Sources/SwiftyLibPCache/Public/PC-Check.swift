@@ -7,12 +7,12 @@
 // MARK: - C
 
 public extension PersistentCache {
-    func checkPage(id: UnsafeBuffer) throws -> Bool {
+    func checkPage(id: CBuffer) throws -> Bool {
         try validateIDBuffer(id)
         return try b_checkPage(handle: handle, id: id.pointer)
     }
     
-    func checkPages(ids: UnsafeBuffer, results: UnsafeMutablePointer<Bool>) throws {
+    func checkPages(ids: CBuffer, results: UnsafeMutablePointer<Bool>) throws {
         let count = try itemCount(fromIDs: ids)
         try b_checkPages(handle: handle, count: count, ids: ids.pointer, results: results)
     }
@@ -32,7 +32,7 @@ public extension PersistentCache {
         }
     }
     
-    func checkPagesRange(first: UnsafeBuffer, last: UnsafeBuffer) throws -> Int {
+    func checkPagesRange(first: CBuffer, last: CBuffer) throws -> Int {
         try validateIDBuffer(first)
         try validateIDBuffer(last)
         return try b_checkPagesRange(handle: handle, first: first.pointer, last: last.pointer)

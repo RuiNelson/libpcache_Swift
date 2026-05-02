@@ -8,8 +8,8 @@
 
 public extension PersistentCache {
     func putPage(
-        id: UnsafeBuffer,
-        data: UnsafeBuffer,
+        id: CBuffer,
+        data: CBuffer,
         failIfExists: Bool = false,
         durable: Bool = true,
     ) throws {
@@ -31,8 +31,8 @@ public extension PersistentCache {
     }
     
     func putPages(
-        ids: UnsafeBuffer,
-        data: UnsafeBuffer,
+        ids: CBuffer,
+        data: CBuffer,
         failIfExists: Bool = false,
         durable: Bool = true,
     ) throws {
@@ -65,7 +65,7 @@ public extension PersistentCache {
     
     func putPages(
         counter: Counter,
-        data: UnsafeBuffer,
+        data: CBuffer,
         failIfExists: Bool = false,
         durable: Bool = true,
     ) throws {
