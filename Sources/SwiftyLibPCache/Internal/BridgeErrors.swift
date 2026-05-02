@@ -7,6 +7,7 @@
 import Foundation
 import pcache
 
+/// Constructs a ``POSIXError`` from a raw code.
 extension POSIXError {
     init(code: Int32?) {
         if let code, let pec = POSIXErrorCode(rawValue: code) {
@@ -18,6 +19,7 @@ extension POSIXError {
     }
 }
 
+/// Internal error dispatch table for libpcache C errors.
 private func _bridgeError(
     create: pcache_create_error? = nil,
     open: pcache_open_error? = nil,
@@ -164,6 +166,7 @@ private func _bridgeError(
     return nil
 }
 
+/// Throws the appropriate error from libpcache C error codes.
 func bridgeError(
     create: pcache_create_error? = nil,
     open: pcache_open_error? = nil,

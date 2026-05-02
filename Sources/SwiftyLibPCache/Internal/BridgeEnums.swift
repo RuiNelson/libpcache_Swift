@@ -7,6 +7,7 @@
 import Foundation
 import pcache
 
+/// Converts C `pcache_capacity_policy` to Swift ``Endianness``.
 extension CapacityPolicy {
     init(_ c: pcache_capacity_policy) {
         switch c {
@@ -14,7 +15,7 @@ extension CapacityPolicy {
         default: self = .fixed
         }
     }
-    
+
     var cValue: pcache_capacity_policy {
         switch self {
         case .fixed: PCACHE_CAPACITY_FIXED
@@ -23,6 +24,7 @@ extension CapacityPolicy {
     }
 }
 
+/// Converts Swift ``Endianness`` to C `pcache_endianness`.
 extension Endianness {
     var cValue: pcache_endianness {
         switch self {

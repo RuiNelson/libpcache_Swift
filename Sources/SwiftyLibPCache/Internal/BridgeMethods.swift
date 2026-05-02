@@ -30,10 +30,13 @@ private func withCProgressCallback<R>(
     return body(cFn, ptr)
 }
 
+/// Opaque handle to the underlying C volume.
 typealias Handle = pcache_handle
 
 // MARK: - Lifecycle
 
+/// Creates a new volume on the filesystem.
+/// - Throws: ``CreateVolumeError`` on failure.
 func b_create(
     paths: FilePair,
     config: Configuration,
@@ -53,6 +56,9 @@ func b_create(
     try bridgeError(create: err, sqlite: sqliteErr, posix: posixErr)
 }
 
+/// Opens an existing volume.
+/// - Returns: Handle to the open volume.
+/// - Throws: ``OpenVolumeError`` on failure.
 func b_open(paths: FilePair) throws -> Handle {
     var err: pcache_open_error = PCACHE_OPEN_OK
     var sqliteErr: Int32 = .init()
@@ -70,6 +76,8 @@ func b_open(paths: FilePair) throws -> Handle {
     return h
 }
 
+/// Closes an open volume and releases all resources.
+/// - Throws: Error if close fails.
 func b_close(handle: Handle) throws {
     var err: pcache_close_error = PCACHE_CLOSE_OK
     var sqliteErr: Int32 = .init()
@@ -80,6 +88,8 @@ func b_close(handle: Handle) throws {
 
 // MARK: - Introspection
 
+/// Returns the configuration of an open volume.
+/// - Throws: Error if inspection fails.
 func b_inspectConfiguration(handle: Handle) throws -> Configuration {
     var err: pcache_inspect_configuration_error = PCACHE_INSPECT_CONFIGURATION_OK
     let c = pcache_inspect_configuration(handle, &err)
@@ -87,6 +97,8 @@ func b_inspectConfiguration(handle: Handle) throws -> Configuration {
     return Configuration(c)
 }
 
+/// Returns the page counts for an open volume.
+/// - Throws: Error if inspection fails.
 func b_inspectPageCount(handle: Handle) throws -> PageCount {
     var err: pcache_inspect_page_count_error = PCACHE_INSPECT_PAGE_COUNT_OK
     var sqliteErr: Int32 = .init()
@@ -97,6 +109,8 @@ func b_inspectPageCount(handle: Handle) throws -> PageCount {
 
 // MARK: - Put
 
+/// Stores a single page.
+/// - Throws: ``PutPagesError`` on failure.
 func b_putPage(
     handle: Handle,
     id: UnsafeRawPointer,
@@ -111,6 +125,8 @@ func b_putPage(
     try bridgeError(put: err, sqlite: sqliteErr, posix: posixErr)
 }
 
+/// Stores multiple pages atomically.
+/// - Throws: ``PutPagesError`` on failure.
 func b_putPages(
     handle: Handle,
     count: Int,
@@ -126,6 +142,8 @@ func b_putPages(
     try bridgeError(put: err, sqlite: sqliteErr, posix: posixErr)
 }
 
+/// Stores multiple pages with auto-derived identifiers.
+/// - Throws: ``PutPagesError`` on failure.
 func b_putPagesWithCounter(
     handle: Handle,
     count: Int,
@@ -159,6 +177,8 @@ func b_putPagesWithCounter(
 
 // MARK: - Get
 
+/// Retrieves a single page.
+/// - Throws: ``GetPagesError`` on failure.
 func b_getPage(handle: Handle, id: UnsafeRawPointer, pageData: UnsafeMutableRawPointer) throws {
     var err: pcache_get_error = PCACHE_GET_OK
     var sqliteErr: Int32 = .init()
@@ -167,6 +187,8 @@ func b_getPage(handle: Handle, id: UnsafeRawPointer, pageData: UnsafeMutableRawP
     try bridgeError(get: err, sqlite: sqliteErr, posix: posixErr)
 }
 
+/// Retrieves multiple pages.
+/// - Throws: ``GetPagesError`` on failure.
 func b_getPages(handle: Handle, count: Int, ids: UnsafeRawPointer, pageData: UnsafeMutableRawPointer) throws {
     var err: pcache_get_error = PCACHE_GET_OK
     var sqliteErr: Int32 = .init()
@@ -175,6 +197,8 @@ func b_getPages(handle: Handle, count: Int, ids: UnsafeRawPointer, pageData: Uns
     try bridgeError(get: err, sqlite: sqliteErr, posix: posixErr)
 }
 
+/// Retrieves multiple pages with auto-derived identifiers.
+/// - Throws: ``GetPagesError`` on failure.
 func b_getPagesWithCounter(
     handle: Handle,
     count: Int,
@@ -202,6 +226,9 @@ func b_getPagesWithCounter(
     try bridgeError(get: err, sqlite: sqliteErr, posix: posixErr)
 }
 
+/// Retrieves pages within a range.
+/// - Returns: Number of pages retrieved.
+/// - Throws: ``GetPagesError`` on failure.
 func b_getPagesRange(
     handle: Handle,
     first: UnsafeRawPointer,
@@ -232,6 +259,9 @@ func b_getPagesRange(
 
 // MARK: - Check
 
+/// Checks if a single page exists.
+/// - Returns: `true` if page exists.
+/// - Throws: Error on failure.
 func b_checkPage(handle: Handle, id: UnsafeRawPointer) throws -> Bool {
     var err: pcache_check_error = PCACHE_CHECK_OK
     var sqliteErr: Int32 = .init()
@@ -240,6 +270,8 @@ func b_checkPage(handle: Handle, id: UnsafeRawPointer) throws -> Bool {
     return result
 }
 
+/// Checks if multiple pages exist.
+/// - Throws: Error on failure.
 func b_checkPages(handle: Handle, count: Int, ids: UnsafeRawPointer, results: UnsafeMutablePointer<Bool>) throws {
     var err: pcache_check_error = PCACHE_CHECK_OK
     var sqliteErr: Int32 = .init()
@@ -247,6 +279,8 @@ func b_checkPages(handle: Handle, count: Int, ids: UnsafeRawPointer, results: Un
     try bridgeError(check: err, sqlite: sqliteErr)
 }
 
+/// Checks if multiple pages exist using auto-derived identifiers.
+/// - Throws: ``CheckPagesError`` on failure.
 func b_checkPagesWithCounter(
     handle: Handle,
     count: Int,
@@ -272,6 +306,9 @@ func b_checkPagesWithCounter(
     try bridgeError(check: err, sqlite: sqliteErr)
 }
 
+/// Counts pages within a range.
+/// - Returns: Number of pages in range.
+/// - Throws: ``CheckPagesError`` on failure.
 func b_checkPagesRange(handle: Handle, first: UnsafeRawPointer, last: UnsafeRawPointer) throws -> Int {
     var countOut: UInt32 = 0
     var err: pcache_check_error = PCACHE_CHECK_OK
@@ -283,6 +320,8 @@ func b_checkPagesRange(handle: Handle, first: UnsafeRawPointer, last: UnsafeRawP
 
 // MARK: - Delete
 
+/// Deletes a single page.
+/// - Throws: Error on failure.
 func b_deletePage(handle: Handle, id: UnsafeRawPointer, wipeDataFile: Bool, durable: Bool) throws {
     var err: pcache_delete_error = PCACHE_DELETE_OK
     var sqliteErr: Int32 = .init()
@@ -291,6 +330,8 @@ func b_deletePage(handle: Handle, id: UnsafeRawPointer, wipeDataFile: Bool, dura
     try bridgeError(delete: err, sqlite: sqliteErr, posix: posixErr)
 }
 
+/// Deletes multiple pages.
+/// - Throws: Error on failure.
 func b_deletePages(
     handle: Handle,
     count: Int,
@@ -305,6 +346,8 @@ func b_deletePages(
     try bridgeError(delete: err, sqlite: sqliteErr, posix: posixErr)
 }
 
+/// Deletes multiple pages with auto-derived identifiers.
+/// - Throws: ``DeletePagesError`` on failure.
 func b_deletePagesWithCounter(
     handle: Handle,
     count: Int,
@@ -334,6 +377,8 @@ func b_deletePagesWithCounter(
     try bridgeError(delete: err, sqlite: sqliteErr, posix: posixErr)
 }
 
+/// Deletes pages within a range.
+/// - Throws: ``DeletePagesError`` on failure.
 func b_deletePagesRange(
     handle: Handle,
     first: UnsafeRawPointer,
@@ -350,6 +395,8 @@ func b_deletePagesRange(
 
 // MARK: - Maintenance
 
+/// Defragments the volume, relocating pages contiguously.
+/// - Throws: ``DefragmentVolumeError`` if cancelled.
 func b_defragment(
     handle: Handle,
     progress: (@Sendable (Double) -> Bool)?,
@@ -365,6 +412,8 @@ func b_defragment(
     try bridgeError(defragment: err, sqlite: sqliteErr, posix: posixErr)
 }
 
+/// Adjusts the maximum page count.
+/// - Throws: ``VolumeSetMaxPagesError`` if reduction would discard pages.
 func b_setMaxPages(handle: Handle, newMaxPages: UInt32, durable: Bool) throws {
     var err: pcache_set_max_pages_error = PCACHE_SET_MAX_PAGES_OK
     var sqliteErr: Int32 = .init()
@@ -373,6 +422,8 @@ func b_setMaxPages(handle: Handle, newMaxPages: UInt32, durable: Bool) throws {
     try bridgeError(setMaxPages: err, sqlite: sqliteErr, posix: posixErr)
 }
 
+/// Preallocates space in an open volume.
+/// - Throws: Error on failure.
 func b_preallocate(handle: Handle, database: Bool, datafile: Bool, durable: Bool) throws {
     var err: pcache_preallocate_error = PCACHE_PREALLOCATE_OK
     var sqliteErr: Int32 = .init()
