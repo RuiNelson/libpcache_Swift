@@ -1,10 +1,10 @@
 //
-//  SwiftyLibPCacheTests.swift
+//  libpcache_SwiftTests.swift
 //
 //  Copyright Rui Nelson Magalhães Carneiro.
 //
 
-@testable import SwiftyLibPCache
+@testable import libpcache_Swift
 import Testing
 
 @Test func example() async throws {

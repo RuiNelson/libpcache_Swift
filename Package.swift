@@ -3,7 +3,7 @@
 import PackageDescription
 
 let package = Package(
-    name: "SwiftyLibPCache",
+    name: "libpcache_Swift",
     platforms: [
         .macOS(.v10_15),
         .iOS(.v13),
@@ -14,8 +14,8 @@ let package = Package(
     ],
     products: [
         .library(
-            name: "SwiftyLibPCache",
-            targets: ["SwiftyLibPCache"],
+            name: "libpcache_Swift",
+            targets: ["libpcache_Swift"],
         ),
     ],
     targets: [
@@ -42,12 +42,12 @@ let package = Package(
             ],
         ),
         .target(
-            name: "SwiftyLibPCache",
+            name: "libpcache_Swift",
             dependencies: ["CLibPCache"],
         ),
         .testTarget(
-            name: "SwiftyLibPCacheTests",
-            dependencies: ["SwiftyLibPCache"],
+            name: "libpcache_SwiftTests",
+            dependencies: ["libpcache_Swift"],
         ),
     ],
 )

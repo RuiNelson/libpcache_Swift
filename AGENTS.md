@@ -22,12 +22,12 @@ swiftformat .
 
 ## Architecture
 
-SwiftyLibPCache is a Swift wrapper around a C library called `libpcache` (submodule at `Sources/CLibPCache`). The library implements a persistent cache backed by SQLite + a binary data file.
+libpcache_Swift is a Swift wrapper around a C library called `libpcache` (submodule at `Sources/CLibPCache`). The library implements a persistent cache backed by SQLite + a binary data file.
 
 ### Code Structure
 
 ```
-Sources/SwiftyLibPCache/
+Sources/libpcache_Swift/
 ├── Public/
 │   ├── PC-Lifecycle.swift      # create/open/close PersistentCache
 │   ├── PC-Read.swift           # getPage(s), getPagesRange
