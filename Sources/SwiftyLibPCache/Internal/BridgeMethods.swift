@@ -4,7 +4,7 @@
 //  Copyright Rui Nelson Magalhães Carneiro.
 //
 
-import CLibPCache
+import pcache
 import Foundation
 
 // MARK: - Progress callback bridge
@@ -50,7 +50,7 @@ func b_create(
             pcache_create(&pair, &cConfig, preallocateDatabase, preallocateDatafile, &err, &sqliteErr, &posixErr)
         }
     }
-    if let error = bridgeError(create: err, sqlite: sqliteErr, posix: posixErr) { throw error }
+    try bridgeError(create: err, sqlite: sqliteErr, posix: posixErr)
 }
 
 func b_open(paths: FilePair) throws -> Handle {
@@ -64,7 +64,7 @@ func b_open(paths: FilePair) throws -> Handle {
         }
     }
     if h == 0 {
-        if let error = bridgeError(open: err, sqlite: sqliteErr, posix: posixErr) { throw error }
+        try bridgeError(open: err, sqlite: sqliteErr, posix: posixErr)
         throw OpenVolumeError.notFound
     }
     return h
@@ -75,7 +75,7 @@ func b_close(handle: Handle) throws {
     var sqliteErr: Int32 = .init()
     var posixErr: Int32 = .init()
     pcache_close(handle, &err, &sqliteErr, &posixErr)
-    if let error = bridgeError(close: err, sqlite: sqliteErr, posix: posixErr) { throw error }
+    try bridgeError(close: err, sqlite: sqliteErr, posix: posixErr)
 }
 
 // MARK: - Introspection
@@ -83,7 +83,7 @@ func b_close(handle: Handle) throws {
 func b_inspectConfiguration(handle: Handle) throws -> Configuration {
     var err: pcache_inspect_configuration_error = PCACHE_INSPECT_CONFIGURATION_OK
     let c = pcache_inspect_configuration(handle, &err)
-    if let error = bridgeError(inspectConfiguration: err) { throw error }
+    try bridgeError(inspectConfiguration: err)
     return Configuration(c)
 }
 
@@ -91,7 +91,7 @@ func b_inspectPageCount(handle: Handle) throws -> PageCount {
     var err: pcache_inspect_page_count_error = PCACHE_INSPECT_PAGE_COUNT_OK
     var sqliteErr: Int32 = .init()
     let c = pcache_inspect_page_count(handle, &err, &sqliteErr)
-    if let error = bridgeError(inspectPageCount: err, sqlite: sqliteErr) { throw error }
+    try bridgeError(inspectPageCount: err, sqlite: sqliteErr)
     return PageCount(c)
 }
 
@@ -108,7 +108,7 @@ func b_putPage(
     var sqliteErr: Int32 = .init()
     var posixErr: Int32 = .init()
     pcache_put_page(handle, id, pageData, failIfExists, durable, &err, &sqliteErr, &posixErr)
-    if let error = bridgeError(put: err, sqlite: sqliteErr, posix: posixErr) { throw error }
+    try bridgeError(put: err, sqlite: sqliteErr, posix: posixErr)
 }
 
 func b_putPages(
@@ -123,7 +123,7 @@ func b_putPages(
     var sqliteErr: Int32 = .init()
     var posixErr: Int32 = .init()
     pcache_put_pages(handle, count, ids, pagesData, failIfExists, durable, &err, &sqliteErr, &posixErr)
-    if let error = bridgeError(put: err, sqlite: sqliteErr, posix: posixErr) { throw error }
+    try bridgeError(put: err, sqlite: sqliteErr, posix: posixErr)
 }
 
 func b_putPagesWithCounter(
@@ -154,7 +154,7 @@ func b_putPagesWithCounter(
         &sqliteErr,
         &posixErr,
     )
-    if let error = bridgeError(put: err, sqlite: sqliteErr, posix: posixErr) { throw error }
+    try bridgeError(put: err, sqlite: sqliteErr, posix: posixErr)
 }
 
 // MARK: - Get
@@ -164,7 +164,7 @@ func b_getPage(handle: Handle, id: UnsafeRawPointer, pageData: UnsafeMutableRawP
     var sqliteErr: Int32 = .init()
     var posixErr: Int32 = .init()
     pcache_get_page(handle, id, pageData, &err, &sqliteErr, &posixErr)
-    if let error = bridgeError(get: err, sqlite: sqliteErr, posix: posixErr) { throw error }
+    try bridgeError(get: err, sqlite: sqliteErr, posix: posixErr)
 }
 
 func b_getPages(handle: Handle, count: Int, ids: UnsafeRawPointer, pageData: UnsafeMutableRawPointer) throws {
@@ -172,7 +172,7 @@ func b_getPages(handle: Handle, count: Int, ids: UnsafeRawPointer, pageData: Uns
     var sqliteErr: Int32 = .init()
     var posixErr: Int32 = .init()
     pcache_get_pages(handle, count, ids, pageData, &err, &sqliteErr, &posixErr)
-    if let error = bridgeError(get: err, sqlite: sqliteErr, posix: posixErr) { throw error }
+    try bridgeError(get: err, sqlite: sqliteErr, posix: posixErr)
 }
 
 func b_getPagesWithCounter(
@@ -199,7 +199,7 @@ func b_getPagesWithCounter(
         &sqliteErr,
         &posixErr,
     )
-    if let error = bridgeError(get: err, sqlite: sqliteErr, posix: posixErr) { throw error }
+    try bridgeError(get: err, sqlite: sqliteErr, posix: posixErr)
 }
 
 func b_getPagesRange(
@@ -226,7 +226,7 @@ func b_getPagesRange(
         &sqliteErr,
         &posixErr,
     )
-    if let error = bridgeError(get: err, sqlite: sqliteErr, posix: posixErr) { throw error }
+    try bridgeError(get: err, sqlite: sqliteErr, posix: posixErr)
     return Int(countOut)
 }
 
@@ -236,7 +236,7 @@ func b_checkPage(handle: Handle, id: UnsafeRawPointer) throws -> Bool {
     var err: pcache_check_error = PCACHE_CHECK_OK
     var sqliteErr: Int32 = .init()
     let result = pcache_check_page(handle, id, &err, &sqliteErr)
-    if let error = bridgeError(check: err, sqlite: sqliteErr) { throw error }
+    try bridgeError(check: err, sqlite: sqliteErr)
     return result
 }
 
@@ -244,7 +244,7 @@ func b_checkPages(handle: Handle, count: Int, ids: UnsafeRawPointer, results: Un
     var err: pcache_check_error = PCACHE_CHECK_OK
     var sqliteErr: Int32 = .init()
     pcache_check_pages(handle, count, ids, results, &err, &sqliteErr)
-    if let error = bridgeError(check: err, sqlite: sqliteErr) { throw error }
+    try bridgeError(check: err, sqlite: sqliteErr)
 }
 
 func b_checkPagesWithCounter(
@@ -269,7 +269,7 @@ func b_checkPagesWithCounter(
         &err,
         &sqliteErr,
     )
-    if let error = bridgeError(check: err, sqlite: sqliteErr) { throw error }
+    try bridgeError(check: err, sqlite: sqliteErr)
 }
 
 func b_checkPagesRange(handle: Handle, first: UnsafeRawPointer, last: UnsafeRawPointer) throws -> Int {
@@ -277,7 +277,7 @@ func b_checkPagesRange(handle: Handle, first: UnsafeRawPointer, last: UnsafeRawP
     var err: pcache_check_error = PCACHE_CHECK_OK
     var sqliteErr: Int32 = .init()
     pcache_check_pages_range(handle, first, last, &countOut, &err, &sqliteErr)
-    if let error = bridgeError(check: err, sqlite: sqliteErr) { throw error }
+    try bridgeError(check: err, sqlite: sqliteErr)
     return Int(countOut)
 }
 
@@ -288,7 +288,7 @@ func b_deletePage(handle: Handle, id: UnsafeRawPointer, wipeDataFile: Bool, dura
     var sqliteErr: Int32 = .init()
     var posixErr: Int32 = .init()
     pcache_delete_page(handle, id, wipeDataFile, durable, &err, &sqliteErr, &posixErr)
-    if let error = bridgeError(delete: err, sqlite: sqliteErr, posix: posixErr) { throw error }
+    try bridgeError(delete: err, sqlite: sqliteErr, posix: posixErr)
 }
 
 func b_deletePages(
@@ -302,7 +302,7 @@ func b_deletePages(
     var sqliteErr: Int32 = .init()
     var posixErr: Int32 = .init()
     pcache_delete_pages(handle, count, ids, wipeDataFile, durable, &err, &sqliteErr, &posixErr)
-    if let error = bridgeError(delete: err, sqlite: sqliteErr, posix: posixErr) { throw error }
+    try bridgeError(delete: err, sqlite: sqliteErr, posix: posixErr)
 }
 
 func b_deletePagesWithCounter(
@@ -331,7 +331,7 @@ func b_deletePagesWithCounter(
         &sqliteErr,
         &posixErr,
     )
-    if let error = bridgeError(delete: err, sqlite: sqliteErr, posix: posixErr) { throw error }
+    try bridgeError(delete: err, sqlite: sqliteErr, posix: posixErr)
 }
 
 func b_deletePagesRange(
@@ -345,7 +345,7 @@ func b_deletePagesRange(
     var sqliteErr: Int32 = .init()
     var posixErr: Int32 = .init()
     pcache_delete_pages_range(handle, first, last, wipeDataFile, durable, &err, &sqliteErr, &posixErr)
-    if let error = bridgeError(delete: err, sqlite: sqliteErr, posix: posixErr) { throw error }
+    try bridgeError(delete: err, sqlite: sqliteErr, posix: posixErr)
 }
 
 // MARK: - Maintenance
@@ -362,7 +362,7 @@ func b_defragment(
     withCProgressCallback(progress) { cFn, userData in
         pcache_defragment(handle, cFn, userData, shrinkFile, durable, &err, &sqliteErr, &posixErr)
     }
-    if let error = bridgeError(defragment: err, sqlite: sqliteErr, posix: posixErr) { throw error }
+    try bridgeError(defragment: err, sqlite: sqliteErr, posix: posixErr)
 }
 
 func b_setMaxPages(handle: Handle, newMaxPages: UInt32, durable: Bool) throws {
@@ -370,7 +370,7 @@ func b_setMaxPages(handle: Handle, newMaxPages: UInt32, durable: Bool) throws {
     var sqliteErr: Int32 = .init()
     var posixErr: Int32 = .init()
     pcache_set_max_pages(handle, newMaxPages, durable, &err, &sqliteErr, &posixErr)
-    if let error = bridgeError(setMaxPages: err, sqlite: sqliteErr, posix: posixErr) { throw error }
+    try bridgeError(setMaxPages: err, sqlite: sqliteErr, posix: posixErr)
 }
 
 func b_preallocate(handle: Handle, database: Bool, datafile: Bool, durable: Bool) throws {
@@ -378,5 +378,5 @@ func b_preallocate(handle: Handle, database: Bool, datafile: Bool, durable: Bool
     var sqliteErr: Int32 = .init()
     var posixErr: Int32 = .init()
     pcache_preallocate(handle, database, datafile, durable, &err, &sqliteErr, &posixErr)
-    if let error = bridgeError(preallocate: err, sqlite: sqliteErr, posix: posixErr) { throw error }
+    try bridgeError(preallocate: err, sqlite: sqliteErr, posix: posixErr)
 }

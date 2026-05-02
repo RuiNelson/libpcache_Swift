@@ -4,7 +4,7 @@
 //  Copyright Rui Nelson Magalhães Carneiro.
 //
 
-import CLibPCache
+import pcache
 import Foundation
 
 extension CapacityPolicy {

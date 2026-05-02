@@ -4,8 +4,8 @@
 //  Copyright Rui Nelson Magalhães Carneiro.
 //
 
-import CLibPCache
 import Foundation
+import pcache
 
 extension POSIXError {
     init(code: Int32?) {
@@ -18,7 +18,7 @@ extension POSIXError {
     }
 }
 
-func bridgeError(
+private func _bridgeError(
     create: pcache_create_error? = nil,
     open: pcache_open_error? = nil,
     close: pcache_close_error? = nil,
@@ -32,7 +32,7 @@ func bridgeError(
     setMaxPages: pcache_set_max_pages_error? = nil,
     preallocate: pcache_preallocate_error? = nil,
     sqlite: Int32? = nil,
-    posix: Int32? = nil,
+    posix: Int32? = nil
 ) -> (any Error)? {
     if let e = create {
         switch e {
@@ -162,4 +162,40 @@ func bridgeError(
         }
     }
     return nil
+}
+
+func bridgeError(
+    create: pcache_create_error? = nil,
+    open: pcache_open_error? = nil,
+    close: pcache_close_error? = nil,
+    inspectConfiguration: pcache_inspect_configuration_error? = nil,
+    inspectPageCount: pcache_inspect_page_count_error? = nil,
+    put: pcache_put_error? = nil,
+    get: pcache_get_error? = nil,
+    check: pcache_check_error? = nil,
+    delete: pcache_delete_error? = nil,
+    defragment: pcache_defragment_error? = nil,
+    setMaxPages: pcache_set_max_pages_error? = nil,
+    preallocate: pcache_preallocate_error? = nil,
+    sqlite: Int32? = nil,
+    posix: Int32? = nil
+) throws {
+    if let e = _bridgeError(
+        create: create,
+        open: open,
+        close: close,
+        inspectConfiguration: inspectConfiguration,
+        inspectPageCount: inspectPageCount,
+        put: put,
+        get: get,
+        check: check,
+        delete: delete,
+        defragment: defragment,
+        setMaxPages: setMaxPages,
+        preallocate: preallocate,
+        sqlite: sqlite,
+        posix: posix
+    ) {
+        throw e
+    }
 }
