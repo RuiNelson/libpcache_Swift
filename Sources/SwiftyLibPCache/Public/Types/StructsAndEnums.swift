@@ -97,10 +97,10 @@ public struct Counter: Sendable {
     
     public init(
         template: Data,
-        zeroPad: Int = 0,
-        position: Int = 0,
-        initialValue: Int = 0,
-        endianess: Endianness = .littleEndian,
+        zeroPad: Int,
+        position: Int,
+        initialValue: Int,
+        endianess: Endianness,
     ) {
         var template = template
         
