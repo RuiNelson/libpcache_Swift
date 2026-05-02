@@ -32,7 +32,7 @@ private func _bridgeError(
     setMaxPages: pcache_set_max_pages_error? = nil,
     preallocate: pcache_preallocate_error? = nil,
     sqlite: Int32? = nil,
-    posix: Int32? = nil
+    posix: Int32? = nil,
 ) -> (any Error)? {
     if let e = create {
         switch e {
@@ -178,7 +178,7 @@ func bridgeError(
     setMaxPages: pcache_set_max_pages_error? = nil,
     preallocate: pcache_preallocate_error? = nil,
     sqlite: Int32? = nil,
-    posix: Int32? = nil
+    posix: Int32? = nil,
 ) throws {
     if let e = _bridgeError(
         create: create,
@@ -194,7 +194,7 @@ func bridgeError(
         setMaxPages: setMaxPages,
         preallocate: preallocate,
         sqlite: sqlite,
-        posix: posix
+        posix: posix,
     ) {
         throw e
     }

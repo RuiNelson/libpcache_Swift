@@ -187,7 +187,12 @@ public extension PersistentCache {
         }
     }
 
-    func putPages(counter: Counter, data: some ContiguousBytes, failIfExists: Bool = false, durable: Bool = true) throws {
+    func putPages(
+        counter: Counter,
+        data: some ContiguousBytes,
+        failIfExists: Bool = false,
+        durable: Bool = true,
+    ) throws {
         try data.withUnsafeBytes { dataBuf in
             try putPages(
                 counter: counter,

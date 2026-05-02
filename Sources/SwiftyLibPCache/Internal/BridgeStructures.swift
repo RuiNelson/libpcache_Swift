@@ -4,8 +4,8 @@
 //  Copyright Rui Nelson Magalhães Carneiro.
 //
 
-import pcache
 import Foundation
+import pcache
 
 extension Configuration {
     init(_ c: pcache_configuration) {
