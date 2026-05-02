@@ -18,6 +18,8 @@ Uses SwiftFormat. Config is in `.swiftformat` (4-space indent, `some`/`any` enab
 swiftformat .
 ```
 
+**Always run `swiftformat .` before creating any commit.**
+
 ## Architecture
 
 SwiftyLibPCache is a Swift wrapper around a C library called `libpcache` (submodule at `Sources/CLibPCache`). The library implements a persistent cache backed by SQLite + a binary data file.
