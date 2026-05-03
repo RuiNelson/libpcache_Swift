@@ -24,66 +24,82 @@ Open the project. Navigate to **Project → Package Dependencies**. Add a packag
 
 ## Cookbook
 
-The following program creates a volume, stores a page, and retrieves it.
-
 ```swift
 import Foundation
 import libpcache_Swift
 
-let dbURL  = URL(fileURLWithPath: "/tmp/volume.db")
-let datURL = URL(fileURLWithPath: "/tmp/volume.dat")
+let fourGB = Int(pow(2.0,32.0))
+
+let pageSize  = 32 * 1024          // 32kB
+let pageCount = fourGB / pageSize  // 4GB / 32kB = 131,072 pages
+let idSize    = 36
+
+// Create a volume. Both files must not exist yet.
+let dbURL  = URL(fileURLWithPath: "my_volume.db")
+let datURL = URL(fileURLWithPath: "my_volume.dat")
 let files  = FilePair(databaseURL: dbURL, dataURL: datURL)!
 
 let config = Configuration(
-    pageSize: 4096,
-    maxPages: 1000,
-    idWidth: 16,
+    pageSize: pageSize,
+    maxPages: pageCount,
+    idWidth: idSize,
     capacityPolicy: .fixed
 )!
 
 try PersistentCache.create(files: files, configuration: config)
+
+// Open the volume.
 let cache = try PersistentCache(files: files)
 
-// The identifier must be exactly idWidth bytes.
-var id = "Hello, World!!!".data(using: .ascii)!
-id.append(contentsOf: repeatElement(0, count: 16 - id.count))
-
-let page = Data(repeatElement(0x42, count: 4096))
-
+// Write a page. durable=true waits for the data to reach disk.
+let id   = Data(repeating: 0xAB, count: idSize)
+let page = Data(repeating: 0x42, count: pageSize)
 try cache.putPage(id: id, data: page)
 
+// Read the page back using the same key.
 let retrieved: Data = try cache.getPage(id: id)
 assert(retrieved == page)
 
+// Delete the page. wipe=false keeps the bytes on disk —
+// only the index entry is removed.
+try cache.deletePage(id: id)
+
+// Close the volume.
 try cache.close()
 ```
 
 ## Cookbook (Counter)
 
-The `Counter` mechanism provides sequential page identifiers derived from a template. This is useful for batch operations where the caller does not wish to manage keys explicitly. The operation derives `count` identifiers starting from `initialValue`, but the `Counter` object itself is not modified.
+The `Counter` mechanism generates sequential page identifiers from a template, so you never
+need to manage keys by hand. Pass a `Counter` to `putPages` / `getPages` / `deletePages` and
+the identifiers are derived automatically from the template, starting value, and byte order.
+The write/read/delete operations themselves do not mutate the counter — call `advance(_:)` or
+`backwards(_:)` explicitly to move it between batches.
 
 ```swift
+let pageSize = 4096
 
 var counter = Counter(
-    template: Data(repeatElement(0xAB, count: 14)),
+    template: Data(repeating: 0xAB, count: (idSize - 2)),
     zeroPad: 2,
     position: 0,
     initialValue: 0,
     endianess: .bigEndian
 )
 
-let batchData = Data(repeatElement(0xFE, count: 4096 * 100)) // pages 0..99
+// Write pages 0..99
+let batchData = Data(repeating: 0x12, count: pageSize * 100)
 try cache.putPages(counter: counter, data: batchData)
 
-// Advance the counter and write the next 100 pages (100..199).
+// Advance and write pages 100..199
 counter.advance(100)
-let nextBatch = Data(repeatElement(0xED, count: 4096 * 100))
+let nextBatch = Data(repeating: 0x34, count: pageSize * 100)
 try cache.putPages(counter: counter, data: nextBatch)
 
-// Read back the second batch.
+// Read back the second batch
 let secondBatch: Data = try cache.getPages(counter: counter, count: 100)
 
-// Rewind to read back the first batch.
+// Rewind to read back the first batch
 counter.backwards(100)
 let firstBatch: Data = try cache.getPages(counter: counter, count: 100)
 
