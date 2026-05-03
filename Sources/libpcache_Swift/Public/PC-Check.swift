@@ -1,7 +1,7 @@
 //
 //  PC-Check.swift
 //
-//  Copyright Rui Nelson Magalhães Carneiro.
+//  MIT 2-Claude License.
 //
 
 // MARK: - C

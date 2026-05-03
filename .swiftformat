@@ -38,7 +38,7 @@
 --group-blank-lines false
 --grouped-extension "MARK: %c"
 --guard-else same-line
---header "//\n//  {file} \n//\n//  Copyright Rui Nelson Magalhães Carneiro.\n//"
+--header "//\n//  {file} \n//\n//  MIT 2-Claude License.\n//"
 --hex-grouping 4,8
 --hex-literal-case uppercase
 --ifdef indent

@@ -1,7 +1,7 @@
 //
 //  libpcache_SwiftTests.swift
 //
-//  Copyright Rui Nelson Magalhães Carneiro.
+//  MIT 2-Claude License.
 //
 
 @testable import libpcache_Swift

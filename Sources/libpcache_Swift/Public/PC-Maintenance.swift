@@ -1,7 +1,7 @@
 //
 //  PC-Maintenance.swift
 //
-//  Copyright Rui Nelson Magalhães Carneiro.
+//  MIT 2-Claude License.
 //
 
 import Foundation

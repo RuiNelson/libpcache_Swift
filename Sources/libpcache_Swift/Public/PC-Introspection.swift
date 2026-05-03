@@ -1,7 +1,7 @@
 //
 //  PC-Introspection.swift
 //
-//  Copyright Rui Nelson Magalhães Carneiro.
+//  MIT 2-Claude License.
 //
 
 public extension PersistentCache {
