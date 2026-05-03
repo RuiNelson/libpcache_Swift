@@ -25,11 +25,13 @@ import Foundation
 ///
 /// ### Storing and Retrieving Pages
 /// ```swift
-/// let id = Data([0xDE,0xAD,0xBE,0xEF, 0,0,0,1, 0,0,0,0, 0,0,0,0])
-/// let page = Data(repeating: 0, count: 4096)
+/// var id = "Hello World!".data(using: .ascii)!
+/// id.append(contentsOf: .init(repeating: 0, count: 16 - id.count)) // zero-pad
+///
+/// let page = Data(repeating: 0x00, count: 4096)
 ///
 /// // Store a page
-/// try cache.putPage(id: id, data: page, durable: false)
+/// try cache.putPage(id: id, data: page)
 ///
 /// // Retrieve it back
 /// let retrieved: Data = try cache.getPage(id: id)
