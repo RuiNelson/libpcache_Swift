@@ -93,7 +93,7 @@ struct ConfigurationTests {
     @Test func `exceeds int max returns nil`() {
         #expect(
             Configuration(
-                pageSize: Int(INT_MAX) + 1,
+                pageSize: Int(UInt32.max) + 1,
                 maxPages: 100,
                 idWidth: 16,
                 capacityPolicy: .fixed,
@@ -141,7 +141,7 @@ struct CounterTests {
             zeroPad: 2,
             position: 0,
             initialValue: 5,
-            endianess: .bigEndian,
+            endianness: .bigEndian,
         )
         #expect(counter.templateWidth == 4)
         #expect(counter.initialValue == 5)
@@ -157,7 +157,7 @@ struct CounterTests {
             zeroPad: 0,
             position: 0,
             initialValue: 0,
-            endianess: .littleEndian,
+            endianness: .littleEndian,
         )
         #expect(counter.templateWidth == 1)
     }
@@ -190,7 +190,7 @@ struct LifecycleTests {
         #expect(FileManager.default.fileExists(atPath: dat.path))
 
         let cache = try PersistentCache(files: pair)
-        let cfg = cache.configuration
+        let cfg = try cache.configuration
         #expect(cfg.pageSize == 4096)
         #expect(cfg.maxPages == 10)
         #expect(cfg.idWidth == 16)
@@ -316,7 +316,7 @@ struct ValidationTests {
     @Test func `preallocate no flags`() throws {
         try withCache { cache in
             #expect(throws: InvalidCall.invalidArguments) {
-                try cache.prealocate(database: false, datafile: false)
+                try cache.preallocate(database: false, datafile: false)
             }
         }
     }
@@ -355,7 +355,7 @@ struct ValidationTests {
                 zeroPad: 0,
                 position: 0,
                 initialValue: 0,
-                endianess: .bigEndian,
+                endianness: .bigEndian,
             )
             let data = makePage(0xAA, size: 4096)
             #expect(throws: InvalidCall.idBufferIsNotTheExpectedSize) {
@@ -398,7 +398,7 @@ struct PageOperationTests {
                 zeroPad: 0,
                 position: 0,
                 initialValue: 0,
-                endianess: .bigEndian,
+                endianness: .bigEndian,
             )
             let pages = Data(repeating: 0x42, count: 4096 * 3)
             try cache.putPages(counter: counter, data: pages)
@@ -529,7 +529,7 @@ struct MaintenanceTests {
         try withCache(maxPages: 5) { cache in
             try cache.putPage(id: makeID(0x01, width: 16), data: makePage(0xAA, size: 4096))
             try cache.setNewMaxPages(3)
-            let cfg = cache.configuration
+            let cfg = try cache.configuration
             #expect(cfg.maxPages == 3)
         }
     }
@@ -566,7 +566,7 @@ struct MaintenanceTests {
 
     @Test func `preallocate runs`() throws {
         try withCache(maxPages: 5) { cache in
-            try cache.prealocate(database: true, datafile: true)
+            try cache.preallocate(database: true, datafile: true)
         }
     }
 }
@@ -583,7 +583,7 @@ struct FIFOPolicyTests {
         )
         try PersistentCache.create(files: pair, configuration: config)
         let cache = try PersistentCache(files: pair)
-        #expect(cache.configuration.capacityPolicy == .fifo)
+        #expect(try cache.configuration.capacityPolicy == .fifo)
         try cache.close()
     }
 }

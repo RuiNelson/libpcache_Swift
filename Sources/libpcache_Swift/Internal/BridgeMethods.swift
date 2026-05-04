@@ -25,7 +25,8 @@ private func withCProgressCallback<R>(
     let ptr = Unmanaged.passRetained(box).toOpaque()
     defer { Unmanaged<ProgressBox>.fromOpaque(ptr).release() }
     let cFn: pcache_progress_fn = { progress, userData in
-        Unmanaged<ProgressBox>.fromOpaque(userData!).takeUnretainedValue().fn(progress)
+        guard let ptr = userData else { return false }
+        return Unmanaged<ProgressBox>.fromOpaque(ptr).takeUnretainedValue().fn(progress)
     }
     return body(cFn, ptr)
 }
@@ -71,13 +72,12 @@ func b_open(paths: FilePair) throws -> Handle {
     }
     if h == 0 {
         try bridgeError(open: err, sqlite: sqliteErr, posix: posixErr)
-        throw OpenVolumeError.notFound
     }
     return h
 }
 
-/// Closes an open volume and releases all resources.
-/// - Throws: Error if close fails.
+/// Closes an open volume.
+/// - Throws: ``CloseVolumeError`` on failure.
 func b_close(handle: Handle) throws {
     var err: pcache_close_error = PCACHE_CLOSE_OK
     var sqliteErr: Int32 = .init()

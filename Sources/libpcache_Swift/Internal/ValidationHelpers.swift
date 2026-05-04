@@ -12,6 +12,7 @@ extension PersistentCache {
     /// Validates that a single ID buffer has the correct size.
     /// - Throws: ``InvalidCall/idBufferIsNotTheExpectedSize`` if size mismatch.
     func validateIDBuffer(_ buffer: CBuffer) throws {
+        let configuration = try self.configuration
         guard buffer.count == configuration.idWidthInt else {
             throw InvalidCall.idBufferIsNotTheExpectedSize
         }
@@ -20,6 +21,7 @@ extension PersistentCache {
     /// Validates that an IDs buffer contains complete IDs.
     /// - Throws: ``InvalidCall/idBufferIsNotTheExpectedSize`` if not divisible by idWidth.
     func validateIDsBuffer(_ buffer: CBuffer) throws {
+        let configuration = try self.configuration
         guard buffer.count % configuration.idWidthInt == 0 else {
             throw InvalidCall.idBufferIsNotTheExpectedSize
         }
@@ -28,6 +30,7 @@ extension PersistentCache {
     /// Validates that a data buffer has the correct page size.
     /// - Throws: ``InvalidCall/dataBufferIsNotTheExpectedSize`` if size mismatch.
     func validateDataBuffer(_ buffer: CBuffer) throws {
+        let configuration = try self.configuration
         guard buffer.count == configuration.pageSizeInt else {
             throw InvalidCall.dataBufferIsNotTheExpectedSize
         }
@@ -36,6 +39,7 @@ extension PersistentCache {
     /// Validates that a mutable data buffer has the correct page size.
     /// - Throws: ``InvalidCall/dataBufferIsNotTheExpectedSize`` if size mismatch.
     func validateDataBuffer(_ buffer: CMutableBuffer) throws {
+        let configuration = try self.configuration
         guard buffer.count == configuration.pageSizeInt else {
             throw InvalidCall.dataBufferIsNotTheExpectedSize
         }
@@ -44,6 +48,7 @@ extension PersistentCache {
     /// Validates that a pages buffer contains complete pages.
     /// - Throws: ``InvalidCall/dataBufferIsNotTheExpectedSize`` if not divisible by pageSize.
     func validatePagesBuffer(_ buffer: CBuffer) throws {
+        let configuration = try self.configuration
         guard buffer.count % configuration.pageSizeInt == 0 else {
             throw InvalidCall.dataBufferIsNotTheExpectedSize
         }
@@ -52,6 +57,7 @@ extension PersistentCache {
     /// Validates that a mutable pages buffer contains complete pages.
     /// - Throws: ``InvalidCall/dataBufferIsNotTheExpectedSize`` if not divisible by pageSize.
     func validatePagesBuffer(_ buffer: CMutableBuffer) throws {
+        let configuration = try self.configuration
         guard buffer.count % configuration.pageSizeInt == 0 else {
             throw InvalidCall.dataBufferIsNotTheExpectedSize
         }
@@ -60,6 +66,7 @@ extension PersistentCache {
     /// Validates that a counter's template width matches the expected ID width.
     /// - Throws: ``InvalidCall/idBufferIsNotTheExpectedSize`` if width mismatch.
     func validateCounter(_ counter: Counter) throws {
+        let configuration = try self.configuration
         guard counter.templateWidth == configuration.idWidthInt else {
             throw InvalidCall.idBufferIsNotTheExpectedSize
         }
@@ -68,6 +75,7 @@ extension PersistentCache {
     /// Validates that an array of Data IDs all have the correct size.
     /// - Throws: ``InvalidCall/idBufferIsNotTheExpectedSize`` if any ID has wrong size.
     func validateIDArray(_ ids: [Data]) throws {
+        let configuration = try self.configuration
         for id in ids {
             guard id.count == configuration.idWidthInt else {
                 throw InvalidCall.idBufferIsNotTheExpectedSize
@@ -78,6 +86,7 @@ extension PersistentCache {
     /// Validates that an array of Data pages all have the correct size.
     /// - Throws: ``InvalidCall/dataBufferIsNotTheExpectedSize`` if any page has wrong size.
     func validatePageArray(_ pages: [Data]) throws {
+        let configuration = try self.configuration
         for page in pages {
             guard page.count == configuration.pageSizeInt else {
                 throw InvalidCall.dataBufferIsNotTheExpectedSize
@@ -90,6 +99,7 @@ extension PersistentCache {
     /// - Throws: ``InvalidCall/idBufferIsNotTheExpectedSize`` if buffer not properly sized.
     func itemCount(fromIDs buffer: CBuffer) throws -> Int {
         try validateIDsBuffer(buffer)
+        let configuration = try self.configuration
         return buffer.count / configuration.idWidthInt
     }
 
@@ -98,6 +108,7 @@ extension PersistentCache {
     /// - Throws: ``InvalidCall/dataBufferIsNotTheExpectedSize`` if buffer not properly sized.
     func itemCount(fromPages buffer: CBuffer) throws -> Int {
         try validatePagesBuffer(buffer)
+        let configuration = try self.configuration
         return buffer.count / configuration.pageSizeInt
     }
 
@@ -106,6 +117,7 @@ extension PersistentCache {
     /// - Throws: ``InvalidCall/dataBufferIsNotTheExpectedSize`` if buffer not properly sized.
     func itemCount(fromPages buffer: CMutableBuffer) throws -> Int {
         try validatePagesBuffer(buffer)
+        let configuration = try self.configuration
         return buffer.count / configuration.pageSizeInt
     }
 

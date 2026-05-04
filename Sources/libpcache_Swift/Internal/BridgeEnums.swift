@@ -7,7 +7,7 @@
 import Foundation
 import pcache
 
-/// Converts C `pcache_capacity_policy` to Swift ``Endianness``.
+/// Converts C `pcache_capacity_policy` to Swift ``CapacityPolicy``.
 extension CapacityPolicy {
     init(_ c: pcache_capacity_policy) {
         switch c {

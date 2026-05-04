@@ -45,7 +45,8 @@ public extension PersistentCache {
     ///   - maxPages: New maximum page count; must be ≥ 1.
     ///   - durable: If `true`, block until data is durable on disk.
     ///
-    /// - Throws: ``VolumeSetMaxPagesError`` if the reduction would discard pages on a FIXED volume.
+    /// - Throws: ``InvalidCall/invalidArguments`` if `maxPages` is ≤ 0;
+    ///   ``VolumeSetMaxPagesError`` if the reduction would discard pages on a FIXED volume.
     func setNewMaxPages(_ maxPages: Int, durable: Bool = true) throws {
         guard maxPages > 0, maxPages <= INT_MAX else {
             throw InvalidCall.invalidArguments
@@ -61,8 +62,9 @@ public extension PersistentCache {
     ///   - datafile: If `true`, extend the data file to its maximum size.
     ///   - durable: If `true`, block until data is durable on disk.
     ///
-    /// - Throws: Error if preallocation fails.
-    func prealocate(database: Bool, datafile: Bool, durable: Bool = true) throws {
+    /// - Throws: ``InvalidCall/invalidArguments`` if both flags are `false`;
+    ///   ``POSIXError`` or ``SQLiteError`` if preallocation fails.
+    func preallocate(database: Bool, datafile: Bool, durable: Bool = true) throws {
         guard database || datafile else {
             throw InvalidCall.invalidArguments
         }

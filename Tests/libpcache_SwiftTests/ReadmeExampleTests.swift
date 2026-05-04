@@ -90,7 +90,7 @@ struct ReadmeExampleTests {
             zeroPad: 2,
             position: 0,
             initialValue: 0,
-            endianess: .bigEndian,
+            endianness: .bigEndian,
         )
 
         let batchData = Data(repeating: 0x12, count: pageSize * 100)

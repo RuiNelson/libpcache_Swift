@@ -14,25 +14,20 @@ public extension PersistentCache {
     ///
     /// - Parameters:
     ///   - id: Page identifier; must be exactly ``Configuration/idWidthInt`` bytes.
-    ///   - data: Page content; must be at least ``Configuration/pageSizeInt`` bytes.
+    ///   - data: Page content; must be exactly ``Configuration/pageSizeInt`` bytes.
     ///   - failIfExists: If `true`, verify that no page with the same identifier already exists before writing.
     ///   - durable: If `true`, block until data is durable on disk.
     ///
-    /// - Throws: ``PutPagesError`` if the write fails.
+    /// - Throws: ``InvalidCall/idBufferIsNotTheExpectedSize`` or ``InvalidCall/dataBufferIsNotTheExpectedSize``
+    ///   if either buffer has the wrong length; ``PutPagesError`` if the write fails.
     func putPage(
         id: CBuffer,
         data: CBuffer,
         failIfExists: Bool = false,
         durable: Bool = true,
     ) throws {
-        guard id.count == configuration.idWidthInt else {
-            throw InvalidCall.idBufferIsNotTheExpectedSize
-        }
-
-        guard data.count == configuration.pageSizeInt else {
-            throw InvalidCall.dataBufferIsNotTheExpectedSize
-        }
-
+        try validateIDBuffer(id)
+        try validateDataBuffer(data)
         try b_putPage(
             handle: handle,
             id: id.pointer,
@@ -54,30 +49,16 @@ public extension PersistentCache {
     ///   - failIfExists: If `true`, verify that none of the identifiers already exist before writing.
     ///   - durable: If `true`, block until data is durable on disk.
     ///
-    /// - Throws: ``PutPagesError`` if the write fails.
+    /// - Throws: ``InvalidCall/idBufferIsNotTheExpectedSize`` or
+    ///   ``InvalidCall/numberOfItemsInIDBufferDoesNotMatchTheNumberOfItemsInDataBuffer``
+    ///   if the buffers are mismatched; ``PutPagesError`` if the write fails.
     func putPages(
         ids: CBuffer,
         data: CBuffer,
         failIfExists: Bool = false,
         durable: Bool = true,
     ) throws {
-        guard ids.count % configuration.idWidthInt == 0 else {
-            throw InvalidCall.idBufferIsNotTheExpectedSize
-        }
-
-        guard data.count % configuration.pageSizeInt == 0 else {
-            throw InvalidCall.dataBufferIsNotTheExpectedSize
-        }
-
-        let count1 = ids.count / configuration.idWidthInt
-        let count2 = data.count / configuration.pageSizeInt
-
-        guard count1 == count2 else {
-            throw InvalidCall.numberOfItemsInIDBufferDoesNotMatchTheNumberOfItemsInDataBuffer
-        }
-
-        let count = count1 // == count2
-
+        let count = try validateMatchingCounts(ids: ids, pages: data)
         try b_putPages(
             handle: handle,
             count: count,
@@ -90,42 +71,34 @@ public extension PersistentCache {
 
     /// Stores multiple pages with identifiers computed automatically from a ``Counter`` template.
     ///
-    /// Starting from `counter.template`, computes `count` identifiers by XORing a `UInt32` counter
-    /// — initial value `counter.initialValue`, incremented by one per page — into four consecutive
-    /// bytes of the template. The counter occupies bytes at indices
-    /// `[idWidth − 4 − counter.position, idWidth − 1 − counter.position]`.
-    ///
     /// - Parameters:
     ///   - counter: ``Counter`` template and starting value.
     ///   - data: Page contents; must be `count * pageSize` bytes.
     ///   - failIfExists: If `true`, verify that none of the computed identifiers already exist before writing.
     ///   - durable: If `true`, block until data is durable on disk.
     ///
-    /// - Throws: ``PutPagesError`` if the write fails.
+    /// - Throws: ``InvalidCall/idBufferIsNotTheExpectedSize`` if the counter template width is wrong;
+    ///   ``PutPagesError`` if the write fails.
     func putPages(
         counter: Counter,
         data: CBuffer,
         failIfExists: Bool = false,
         durable: Bool = true,
     ) throws {
-        guard counter.templateWidth == configuration.idWidthInt else {
-            throw InvalidCall.idBufferIsNotTheExpectedSize
-        }
-
-        guard data.count % configuration.pageSizeInt == 0 else {
-            throw InvalidCall.dataBufferIsNotTheExpectedSize
-        }
-
-        let count = data.count / configuration.pageSizeInt
+        try validateCounter(counter)
+        let count = try itemCount(fromPages: data)
 
         try counter.template.withUnsafeBytes { counterBuf in
+            guard let base = counterBuf.baseAddress else {
+                throw InvalidCall.idBufferIsNotTheExpectedSize
+            }
             try b_putPagesWithCounter(
                 handle: handle,
                 count: count,
-                idBase: counterBuf.baseAddress!,
+                idBase: base,
                 start: counter.initialValue,
                 position: counter.position,
-                endianness: counter.endianess,
+                endianness: counter.endianness,
                 pagesData: data.pointer,
                 failIfExists: failIfExists,
                 durable: durable,
@@ -141,7 +114,7 @@ public extension PersistentCache {
     ///
     /// - Parameters:
     ///   - id: Page identifier; must be exactly ``Configuration/idWidthInt`` bytes.
-    ///   - data: Page content; must be at least ``Configuration/pageSizeInt`` bytes.
+    ///   - data: Page content; must be exactly ``Configuration/pageSizeInt`` bytes.
     ///   - failIfExists: If `true`, verify that no page with the same identifier already exists before writing.
     ///   - durable: If `true`, block until data is durable on disk.
     ///
@@ -153,10 +126,16 @@ public extension PersistentCache {
         durable: Bool = true,
     ) throws {
         try id.withUnsafeBytes { idBuf in
+            guard let idBase = idBuf.baseAddress else {
+                throw InvalidCall.idBufferIsNotTheExpectedSize
+            }
             try data.withUnsafeBytes { dataBuf in
+                guard let dataBase = dataBuf.baseAddress else {
+                    throw InvalidCall.dataBufferIsNotTheExpectedSize
+                }
                 try putPage(
-                    id: (idBuf.baseAddress!, idBuf.count),
-                    data: (dataBuf.baseAddress!, dataBuf.count),
+                    id: (idBase, idBuf.count),
+                    data: (dataBase, dataBuf.count),
                     failIfExists: failIfExists,
                     durable: durable,
                 )
@@ -180,10 +159,16 @@ public extension PersistentCache {
         durable: Bool = true,
     ) throws {
         try ids.withUnsafeBytes { idsBuf in
+            guard let idsBase = idsBuf.baseAddress else {
+                throw InvalidCall.idBufferIsNotTheExpectedSize
+            }
             try data.withUnsafeBytes { dataBuf in
+                guard let dataBase = dataBuf.baseAddress else {
+                    throw InvalidCall.dataBufferIsNotTheExpectedSize
+                }
                 try putPages(
-                    ids: (idsBuf.baseAddress!, idsBuf.count),
-                    data: (dataBuf.baseAddress!, dataBuf.count),
+                    ids: (idsBase, idsBuf.count),
+                    data: (dataBase, dataBuf.count),
                     failIfExists: failIfExists,
                     durable: durable,
                 )
@@ -202,9 +187,12 @@ public extension PersistentCache {
     /// - Throws: ``PutPagesError`` if the write fails.
     func putPages(counter: Counter, data: RawSpan, failIfExists: Bool = false, durable: Bool = true) throws {
         try data.withUnsafeBytes { dataBuf in
+            guard let dataBase = dataBuf.baseAddress else {
+                throw InvalidCall.dataBufferIsNotTheExpectedSize
+            }
             try putPages(
                 counter: counter,
-                data: (dataBuf.baseAddress!, dataBuf.count),
+                data: (dataBase, dataBuf.count),
                 failIfExists: failIfExists,
                 durable: durable,
             )
@@ -221,7 +209,7 @@ public extension PersistentCache {
     ///
     /// - Parameters:
     ///   - id: Page identifier; must be exactly ``Configuration/idWidthInt`` bytes.
-    ///   - data: Page content; must be at least ``Configuration/pageSizeInt`` bytes.
+    ///   - data: Page content; must be exactly ``Configuration/pageSizeInt`` bytes.
     ///   - failIfExists: If `true`, verify that no page with the same identifier already exists before writing.
     ///   - durable: If `true`, block until data is durable on disk.
     ///
@@ -233,10 +221,16 @@ public extension PersistentCache {
         durable: Bool = true,
     ) throws {
         try id.withUnsafeBytes { idBuf in
+            guard let idBase = idBuf.baseAddress else {
+                throw InvalidCall.idBufferIsNotTheExpectedSize
+            }
             try data.withUnsafeBytes { dataBuf in
+                guard let dataBase = dataBuf.baseAddress else {
+                    throw InvalidCall.dataBufferIsNotTheExpectedSize
+                }
                 try putPage(
-                    id: (idBuf.baseAddress!, idBuf.count),
-                    data: (dataBuf.baseAddress!, dataBuf.count),
+                    id: (idBase, idBuf.count),
+                    data: (dataBase, dataBuf.count),
                     failIfExists: failIfExists,
                     durable: durable,
                 )
@@ -260,10 +254,16 @@ public extension PersistentCache {
         durable: Bool = true,
     ) throws {
         try ids.withUnsafeBytes { idsBuf in
+            guard let idsBase = idsBuf.baseAddress else {
+                throw InvalidCall.idBufferIsNotTheExpectedSize
+            }
             try data.withUnsafeBytes { dataBuf in
+                guard let dataBase = dataBuf.baseAddress else {
+                    throw InvalidCall.dataBufferIsNotTheExpectedSize
+                }
                 try putPages(
-                    ids: (idsBuf.baseAddress!, idsBuf.count),
-                    data: (dataBuf.baseAddress!, dataBuf.count),
+                    ids: (idsBase, idsBuf.count),
+                    data: (dataBase, dataBuf.count),
                     failIfExists: failIfExists,
                     durable: durable,
                 )
@@ -287,9 +287,12 @@ public extension PersistentCache {
         durable: Bool = true,
     ) throws {
         try data.withUnsafeBytes { dataBuf in
+            guard let dataBase = dataBuf.baseAddress else {
+                throw InvalidCall.dataBufferIsNotTheExpectedSize
+            }
             try putPages(
                 counter: counter,
-                data: (dataBuf.baseAddress!, dataBuf.count),
+                data: (dataBase, dataBuf.count),
                 failIfExists: failIfExists,
                 durable: durable,
             )
@@ -334,27 +337,25 @@ public extension PersistentCache {
         guard ids.count == data.count else {
             throw InvalidCall.numberOfItemsInIDBufferDoesNotMatchTheNumberOfItemsInDataBuffer
         }
+        guard !ids.isEmpty else { return }
 
-        for id in ids {
-            guard id.count == configuration.idWidthInt else {
-                throw InvalidCall.idBufferIsNotTheExpectedSize
-            }
-        }
-
-        for page in data {
-            guard page.count == configuration.pageSizeInt else {
-                throw InvalidCall.dataBufferIsNotTheExpectedSize
-            }
-        }
+        try validateIDArray(ids)
+        try validatePageArray(data)
 
         let idsSquashed = ids.squashed()
         let dataSquashed = data.squashed()
 
         try idsSquashed.withUnsafeBytes { idsBuf in
+            guard let idsBase = idsBuf.baseAddress else {
+                throw InvalidCall.idBufferIsNotTheExpectedSize
+            }
             try dataSquashed.withUnsafeBytes { dataBuf in
+                guard let dataBase = dataBuf.baseAddress else {
+                    throw InvalidCall.dataBufferIsNotTheExpectedSize
+                }
                 try putPages(
-                    ids: (idsBuf.baseAddress!, idsBuf.count),
-                    data: (dataBuf.baseAddress!, dataBuf.count),
+                    ids: (idsBase, idsBuf.count),
+                    data: (dataBase, dataBuf.count),
                     failIfExists: failIfExists,
                     durable: durable,
                 )
@@ -372,22 +373,20 @@ public extension PersistentCache {
     ///
     /// - Throws: ``PutPagesError`` if the write fails.
     func putPages(counter: Counter, data: [Data], failIfExists: Bool = false, durable: Bool = true) throws {
-        guard counter.templateWidth == configuration.idWidthInt else {
-            throw InvalidCall.idBufferIsNotTheExpectedSize
-        }
+        guard !data.isEmpty else { return }
 
-        for page in data {
-            guard page.count == configuration.pageSizeInt else {
-                throw InvalidCall.dataBufferIsNotTheExpectedSize
-            }
-        }
+        try validateCounter(counter)
+        try validatePageArray(data)
 
         let dataSquashed = data.squashed()
 
         try dataSquashed.withUnsafeBytes { dataBuf in
+            guard let dataBase = dataBuf.baseAddress else {
+                throw InvalidCall.dataBufferIsNotTheExpectedSize
+            }
             try putPages(
                 counter: counter,
-                data: (dataBuf.baseAddress!, dataBuf.count),
+                data: (dataBase, dataBuf.count),
                 failIfExists: failIfExists,
                 durable: durable,
             )
@@ -411,24 +410,25 @@ public extension PersistentCache {
         failIfExists: Bool = false,
         durable: Bool = true,
     ) throws {
-        for (id, data) in pages {
-            guard id.count == configuration.idWidthInt else {
-                throw InvalidCall.idBufferIsNotTheExpectedSize
-            }
+        guard !pages.isEmpty else { return }
 
-            guard data.count == configuration.pageSizeInt else {
-                throw InvalidCall.dataBufferIsNotTheExpectedSize
-            }
-        }
+        try validateIDArray(pages.map(\.id))
+        try validatePageArray(pages.map(\.data))
 
         let idsSquashed = pages.map(\.id).squashed()
         let dataSquashed = pages.map(\.data).squashed()
 
         try idsSquashed.withUnsafeBytes { idsBuf in
+            guard let idsBase = idsBuf.baseAddress else {
+                throw InvalidCall.idBufferIsNotTheExpectedSize
+            }
             try dataSquashed.withUnsafeBytes { dataBuf in
+                guard let dataBase = dataBuf.baseAddress else {
+                    throw InvalidCall.dataBufferIsNotTheExpectedSize
+                }
                 try putPages(
-                    ids: (idsBuf.baseAddress!, idsBuf.count),
-                    data: (dataBuf.baseAddress!, dataBuf.count),
+                    ids: (idsBase, idsBuf.count),
+                    data: (dataBase, dataBuf.count),
                     failIfExists: failIfExists,
                     durable: durable,
                 )

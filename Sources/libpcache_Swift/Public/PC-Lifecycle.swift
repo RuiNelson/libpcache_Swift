@@ -37,18 +37,19 @@ import Foundation
 /// let retrieved: Data = try cache.getPage(id: id)
 /// ```
 ///
-/// ### Closing
-/// ```swift
-/// try cache.close()
-/// ```
-///
 /// - SeeAlso: ``Configuration`` for volume configuration parameters
 public final class PersistentCache: Sendable {
-    /// Opaque handle to the underlying C volume.
-    let handle: Handle
+    /// Opaque handle to the underlying C volume. Zero means already closed.
+    nonisolated(unsafe) var handle: Handle
 
     init(handle: Handle) {
         self.handle = handle
+    }
+
+    deinit {
+        if handle != 0 {
+            try? b_close(handle: handle)
+        }
     }
 }
 
@@ -62,25 +63,27 @@ public extension PersistentCache {
     /// - Parameters:
     ///   - files: Paths to the database and data files.
     ///   - configuration: Volume parameters (page size, capacity, id width, eviction policy).
-    ///   - options.prealocateDatabase: If `true`, pre-allocate slots in the index for all `maxPages` pages,
+    ///   - options.preallocateDatabase: If `true`, pre-allocate slots in the index for all `maxPages` pages,
     ///     enabling O(1) allocation on subsequent inserts.
-    ///   - options.prealocateDatafile: If `true`, extend the data file to its maximum size immediately.
+    ///   - options.preallocateDatafile: If `true`, extend the data file to its maximum size immediately.
     ///
     /// - Throws: ``CreateVolumeError`` if creation fails.
     static func create(
         files: FilePair,
         configuration: Configuration,
-        options: (prealocateDatabase: Bool, prealocateDatafile: Bool) = (false, false),
+        options: (preallocateDatabase: Bool, preallocateDatafile: Bool) = (false, false),
     ) throws {
         try b_create(
             paths: files,
             config: configuration,
-            preallocateDatabase: options.prealocateDatabase,
-            preallocateDatafile: options.prealocateDatafile,
+            preallocateDatabase: options.preallocateDatabase,
+            preallocateDatafile: options.preallocateDatafile,
         )
     }
 
     /// Opens an existing volume.
+    ///
+    /// The volume is closed automatically when the ``PersistentCache`` object is deallocated.
     ///
     /// - Parameter files: Paths to the database and data files.
     ///
@@ -90,13 +93,15 @@ public extension PersistentCache {
         self.init(handle: h)
     }
 
-    /// Closes an open volume and releases all associated resources.
+    /// Explicitly closes the volume and flushes any pending writes.
     ///
-    /// On return, the data file and index database are fsync'd before the handles are closed,
-    /// ensuring all data is persisted to stable storage.
+    /// After this call the object must not be used again.
+    /// The volume is also closed automatically on deallocation, but errors are silenced in that path.
     ///
-    /// - Throws: Error if the close operation fails.
+    /// - Throws: ``POSIXError`` if an I/O flush fails; ``SQLiteError`` if the WAL checkpoint fails.
     func close() throws {
-        try b_close(handle: handle)
+        let h = handle
+        handle = 0
+        try b_close(handle: h)
     }
 }

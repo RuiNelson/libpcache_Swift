@@ -75,13 +75,13 @@ public struct Configuration: Sendable {
     ///   - idWidth: Length of the identifier in bytes. Must be greater than zero.
     ///   - capacityPolicy: Eviction policy applied when the volume is full.
     ///
-    /// - Returns: `nil` if any parameter is invalid (zero or exceeds `INT_MAX`).
+    /// - Returns: `nil` if any parameter is invalid (zero or exceeds `UInt32.max`).
     public init?(pageSize: Int, maxPages: Int, idWidth: Int, capacityPolicy: CapacityPolicy) {
         guard pageSize > 0, maxPages > 0, idWidth > 0 else {
             return nil
         }
 
-        guard pageSize <= INT_MAX, maxPages <= INT_MAX, idWidth <= INT_MAX else {
+        guard pageSize <= Int(UInt32.max), maxPages <= Int(UInt32.max), idWidth <= Int(UInt32.max) else {
             return nil
         }
 
@@ -97,12 +97,16 @@ public struct Configuration: Sendable {
     ///
     /// - Parameters:
     ///   - capacity: Total capacity in bytes. Must be a multiple of `pageSize`.
-    ///   - pageSize: Size of every page in bytes.
-    ///   - idWidth: Length of the identifier in bytes.
+    ///   - pageSize: Size of every page in bytes. Must be greater than zero.
+    ///   - idWidth: Length of the identifier in bytes. Must be greater than zero.
     ///   - capacityPolicy: Eviction policy applied when the volume is full.
     ///
-    /// - Returns: `nil` if the capacity is not a valid multiple of the page size.
+    /// - Returns: `nil` if the capacity is not a valid multiple of the page size, or if `pageSize` or `idWidth` is zero.
     public init?(capacity: Int64, pageSize: Int, idWidth: Int, capacityPolicy: CapacityPolicy) {
+        guard pageSize > 0, idWidth > 0 else {
+            return nil
+        }
+
         guard capacity >= pageSize, capacity % Int64(pageSize) == 0 else {
             return nil
         }
@@ -169,7 +173,7 @@ public enum Endianness: Sendable {
 /// ``PersistentCache/getPages(counter:count:)``, ``PersistentCache/checkPages(counter:count:)``,
 /// and ``PersistentCache/deletePages(counter:count:wipeDataFile:durable:)`` share the same identifier
 /// derivation scheme. The operations are therefore symmetric: the same `template`, `start`, `count`,
-/// `position`, and `endianess` reconstruct the same identifiers for reads, checks, and deletes
+/// `position`, and `endianness` reconstruct the same identifiers for reads, checks, and deletes
 /// as were used for writes.
 ///
 /// ### Identifier Derivation Example
@@ -189,7 +193,7 @@ public struct Counter: Sendable {
     /// Current counter value; incremented by page operations.
     public var initialValue: UInt32
     /// Byte order for the counter.
-    let endianess: Endianness
+    let endianness: Endianness
 
     /// Creates a new counter.
     ///
@@ -199,13 +203,13 @@ public struct Counter: Sendable {
     ///   - zeroPad: Number of zero bytes to append to the template.
     ///   - position: Offset from the end where the counter ends (0 = last four bytes).
     ///   - initialValue: Starting counter value.
-    ///   - endianess: Byte order for the counter.
+    ///   - endianness: Byte order for the counter.
     public init(
         template: Data,
         zeroPad: Int,
         position: Int,
         initialValue: Int,
-        endianess: Endianness,
+        endianness: Endianness,
     ) {
         var template = template
 
@@ -216,21 +220,29 @@ public struct Counter: Sendable {
         self.template = template
         self.position = UInt32(position)
         self.initialValue = UInt32(initialValue)
-        self.endianess = endianess
+        self.endianness = endianness
     }
 
     /// Advances the counter by a given amount.
     ///
-    /// - Parameter by: Amount to increment the counter.
+    /// A negative `by` is equivalent to calling ``backwards(_:)`` with its absolute value.
     public mutating func advance(_ by: Int) {
-        initialValue = initialValue + UInt32(by)
+        if by < 0 {
+            initialValue = initialValue - UInt32(-by)
+        } else {
+            initialValue = initialValue + UInt32(by)
+        }
     }
 
     /// Moves the counter backwards by a given amount.
     ///
-    /// - Parameter by: Amount to decrement the counter.
+    /// A negative `by` is equivalent to calling ``advance(_:)`` with its absolute value.
     public mutating func backwards(_ by: Int) {
-        initialValue = initialValue - UInt32(by)
+        if by < 0 {
+            initialValue = initialValue + UInt32(-by)
+        } else {
+            initialValue = initialValue - UInt32(by)
+        }
     }
 
     /// Width of the template in bytes.

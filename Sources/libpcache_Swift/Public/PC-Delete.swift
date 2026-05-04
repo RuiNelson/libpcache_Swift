@@ -16,16 +16,14 @@ public extension PersistentCache {
     ///   - wipe: If `true`, overwrite the page data with zeros.
     ///   - durable: If `true`, block until data is durable on disk.
     ///
-    /// - Throws: Error if the delete fails.
+    /// - Throws: ``InvalidCall/idBufferIsNotTheExpectedSize`` if `id` has the wrong length;
+    ///   ``POSIXError`` or ``SQLiteError`` on I/O or database failure.
     func deletePage(
         id: CBuffer,
         wipe: Bool = false,
         durable: Bool = true,
     ) throws {
-        guard id.count == configuration.idWidthInt else {
-            throw InvalidCall.idBufferIsNotTheExpectedSize
-        }
-
+        try validateIDBuffer(id)
         try b_deletePage(
             handle: handle,
             id: id.pointer,
@@ -44,18 +42,14 @@ public extension PersistentCache {
     ///   - wipe: If `true`, overwrite the page data with zeros.
     ///   - durable: If `true`, block until data is durable on disk.
     ///
-    /// - Throws: Error if the delete fails.
+    /// - Throws: ``InvalidCall/idBufferIsNotTheExpectedSize`` if `ids` is not a multiple of `idWidth`;
+    ///   ``POSIXError`` or ``SQLiteError`` on I/O or database failure.
     func deletePages(
         ids: CBuffer,
         wipe: Bool = false,
         durable: Bool = true,
     ) throws {
-        guard ids.count % configuration.idWidthInt == 0 else {
-            throw InvalidCall.idBufferIsNotTheExpectedSize
-        }
-
-        let count = ids.count / configuration.idWidthInt
-
+        let count = try itemCount(fromIDs: ids)
         try b_deletePages(
             handle: handle,
             count: count,
@@ -69,30 +63,33 @@ public extension PersistentCache {
     ///
     /// - Parameters:
     ///   - counter: ``Counter`` template and starting value.
-    ///   - count: Number of pages to delete.
+    ///   - count: Number of pages to delete. Must be non-negative.
     ///   - wipe: If `true`, overwrite the page data with zeros.
     ///   - durable: If `true`, block until data is durable on disk.
     ///
-    /// - Throws: ``DeletePagesError`` if `position` is out of bounds, the counter overflows,
-    ///   or `endianess` is invalid.
+    /// - Throws: ``InvalidCall/invalidArguments`` if `count` is negative;
+    ///   ``InvalidCall/idBufferIsNotTheExpectedSize`` if the counter template width is wrong;
+    ///   ``DeletePagesError/invalidArgument`` if `position` is out of bounds, the counter overflows,
+    ///   or `endianness` is invalid.
     func deletePages(
         counter: Counter,
         count: Int,
         wipe: Bool = false,
         durable: Bool = true,
     ) throws {
-        guard counter.templateWidth == configuration.idWidthInt else {
-            throw InvalidCall.idBufferIsNotTheExpectedSize
-        }
-
+        guard count >= 0 else { throw InvalidCall.invalidArguments }
+        try validateCounter(counter)
         try counter.template.withUnsafeBytes { counterBuf in
+            guard let base = counterBuf.baseAddress else {
+                throw InvalidCall.idBufferIsNotTheExpectedSize
+            }
             try b_deletePagesWithCounter(
                 handle: handle,
                 count: count,
-                idBase: counterBuf.baseAddress!,
+                idBase: base,
                 start: counter.initialValue,
                 position: counter.position,
-                endianness: counter.endianess,
+                endianness: counter.endianness,
                 wipeDataFile: wipe,
                 durable: durable,
             )
@@ -109,21 +106,16 @@ public extension PersistentCache {
     ///   - wipe: If `true`, overwrite the page data with zeros.
     ///   - durable: If `true`, block until data is durable on disk.
     ///
-    /// - Throws: ``DeletePagesError`` if `first > last`.
+    /// - Throws: ``InvalidCall/idBufferIsNotTheExpectedSize`` if either buffer has the wrong length;
+    ///   ``DeletePagesError/invalidRange`` if `first > last`.
     func deletePagesRange(
         first: CBuffer,
         last: CBuffer,
         wipe: Bool = false,
         durable: Bool = true,
     ) throws {
-        guard first.count == configuration.idWidthInt else {
-            throw InvalidCall.idBufferIsNotTheExpectedSize
-        }
-
-        guard last.count == configuration.idWidthInt else {
-            throw InvalidCall.idBufferIsNotTheExpectedSize
-        }
-
+        try validateIDBuffer(first)
+        try validateIDBuffer(last)
         try b_deletePagesRange(
             handle: handle,
             first: first.pointer,
@@ -151,11 +143,10 @@ public extension PersistentCache {
         durable: Bool = true,
     ) throws {
         try id.withUnsafeBytes { idBuf in
-            try deletePage(
-                id: (idBuf.baseAddress!, idBuf.count),
-                wipe: wipe,
-                durable: durable,
-            )
+            guard let base = idBuf.baseAddress else {
+                throw InvalidCall.idBufferIsNotTheExpectedSize
+            }
+            try deletePage(id: (base, idBuf.count), wipe: wipe, durable: durable)
         }
     }
 
@@ -173,11 +164,10 @@ public extension PersistentCache {
         durable: Bool = true,
     ) throws {
         try ids.withUnsafeBytes { idsBuf in
-            try deletePages(
-                ids: (idsBuf.baseAddress!, idsBuf.count),
-                wipe: wipe,
-                durable: durable,
-            )
+            guard let idsBase = idsBuf.baseAddress else {
+                throw InvalidCall.idBufferIsNotTheExpectedSize
+            }
+            try deletePages(ids: (idsBase, idsBuf.count), wipe: wipe, durable: durable)
         }
     }
 
@@ -197,10 +187,16 @@ public extension PersistentCache {
         durable: Bool = true,
     ) throws {
         try first.withUnsafeBytes { firstBuf in
+            guard let firstBase = firstBuf.baseAddress else {
+                throw InvalidCall.idBufferIsNotTheExpectedSize
+            }
             try last.withUnsafeBytes { lastBuf in
+                guard let lastBase = lastBuf.baseAddress else {
+                    throw InvalidCall.idBufferIsNotTheExpectedSize
+                }
                 try deletePagesRange(
-                    first: (firstBuf.baseAddress!, firstBuf.count),
-                    last: (lastBuf.baseAddress!, lastBuf.count),
+                    first: (firstBase, firstBuf.count),
+                    last: (lastBase, lastBuf.count),
                     wipe: wipe,
                     durable: durable,
                 )
@@ -228,11 +224,10 @@ public extension PersistentCache {
         durable: Bool = true,
     ) throws {
         try id.withUnsafeBytes { idBuf in
-            try deletePage(
-                id: (idBuf.baseAddress!, idBuf.count),
-                wipe: wipe,
-                durable: durable,
-            )
+            guard let base = idBuf.baseAddress else {
+                throw InvalidCall.idBufferIsNotTheExpectedSize
+            }
+            try deletePage(id: (base, idBuf.count), wipe: wipe, durable: durable)
         }
     }
 
@@ -250,11 +245,10 @@ public extension PersistentCache {
         durable: Bool = true,
     ) throws {
         try ids.withUnsafeBytes { idsBuf in
-            try deletePages(
-                ids: (idsBuf.baseAddress!, idsBuf.count),
-                wipe: wipe,
-                durable: durable,
-            )
+            guard let idsBase = idsBuf.baseAddress else {
+                throw InvalidCall.idBufferIsNotTheExpectedSize
+            }
+            try deletePages(ids: (idsBase, idsBuf.count), wipe: wipe, durable: durable)
         }
     }
 
@@ -274,10 +268,16 @@ public extension PersistentCache {
         durable: Bool = true,
     ) throws {
         try first.withUnsafeBytes { firstBuf in
+            guard let firstBase = firstBuf.baseAddress else {
+                throw InvalidCall.idBufferIsNotTheExpectedSize
+            }
             try last.withUnsafeBytes { lastBuf in
+                guard let lastBase = lastBuf.baseAddress else {
+                    throw InvalidCall.idBufferIsNotTheExpectedSize
+                }
                 try deletePagesRange(
-                    first: (firstBuf.baseAddress!, firstBuf.count),
-                    last: (lastBuf.baseAddress!, lastBuf.count),
+                    first: (firstBase, firstBuf.count),
+                    last: (lastBase, lastBuf.count),
                     wipe: wipe,
                     durable: durable,
                 )
@@ -302,20 +302,14 @@ public extension PersistentCache {
         wipe: Bool = false,
         durable: Bool = true,
     ) throws {
-        for id in ids {
-            guard id.count == configuration.idWidthInt else {
+        guard !ids.isEmpty else { return }
+        try validateIDArray(ids)
+        let idsSquashed = ids.squashed()
+        try idsSquashed.withUnsafeBytes { idsBuf in
+            guard let idsBase = idsBuf.baseAddress else {
                 throw InvalidCall.idBufferIsNotTheExpectedSize
             }
-        }
-
-        let idsSquashed = ids.squashed()
-
-        try idsSquashed.withUnsafeBytes { idsBuf in
-            try deletePages(
-                ids: (idsBuf.baseAddress!, idsBuf.count),
-                wipe: wipe,
-                durable: durable,
-            )
+            try deletePages(ids: (idsBase, idsBuf.count), wipe: wipe, durable: durable)
         }
     }
 }

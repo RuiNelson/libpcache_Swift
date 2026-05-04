@@ -14,7 +14,8 @@ public extension PersistentCache {
     /// - Parameter id: Page identifier; must be exactly ``Configuration/idWidthInt`` bytes.
     ///
     /// - Returns: `true` if the page exists, `false` otherwise.
-    /// - Throws: Error if the check fails.
+    /// - Throws: ``InvalidCall/idBufferIsNotTheExpectedSize`` if `id` has the wrong length;
+    ///   ``CommonErrors`` or ``SQLiteError`` on database failure.
     func checkPage(id: CBuffer) throws -> Bool {
         try validateIDBuffer(id)
         return try b_checkPage(handle: handle, id: id.pointer)
@@ -27,7 +28,8 @@ public extension PersistentCache {
     ///   - results: Caller-supplied array of at least `count` booleans; `true` for each
     ///     page that exists, `false` otherwise.
     ///
-    /// - Throws: Error if the check fails.
+    /// - Throws: ``InvalidCall/idBufferIsNotTheExpectedSize`` if `ids` is not a multiple of `idWidth`;
+    ///   ``CommonErrors`` or ``SQLiteError`` on database failure.
     func checkPages(ids: CBuffer, results: UnsafeMutablePointer<Bool>) throws {
         let count = try itemCount(fromIDs: ids)
         try b_checkPages(handle: handle, count: count, ids: ids.pointer, results: results)
@@ -37,21 +39,27 @@ public extension PersistentCache {
     ///
     /// - Parameters:
     ///   - counter: ``Counter`` template and starting value.
-    ///   - count: Number of pages to check.
+    ///   - count: Number of pages to check. Must be non-negative.
     ///   - results: Caller-supplied array of at least `count` booleans.
     ///
-    /// - Throws: ``CheckPagesError`` if `position` is out of bounds, the counter overflows,
-    ///   or `endianess` is invalid.
+    /// - Throws: ``InvalidCall/invalidArguments`` if `count` is negative;
+    ///   ``InvalidCall/idBufferIsNotTheExpectedSize`` if the counter template width is wrong;
+    ///   ``CheckPagesError/invalidArgument`` if `position` is out of bounds, the counter overflows,
+    ///   or `endianness` is invalid.
     func checkPages(counter: Counter, count: Int, results: UnsafeMutablePointer<Bool>) throws {
+        guard count >= 0 else { throw InvalidCall.invalidArguments }
         try validateCounter(counter)
         try counter.template.withUnsafeBytes { counterBuf in
+            guard let base = counterBuf.baseAddress else {
+                throw InvalidCall.idBufferIsNotTheExpectedSize
+            }
             try b_checkPagesWithCounter(
                 handle: handle,
                 count: count,
-                idBase: counterBuf.baseAddress!,
+                idBase: base,
                 start: counter.initialValue,
                 position: counter.position,
-                endianness: counter.endianess,
+                endianness: counter.endianness,
                 results: results,
             )
         }
@@ -67,7 +75,8 @@ public extension PersistentCache {
     ///
     /// - Returns: The number of pages in the range.
     ///
-    /// - Throws: ``CheckPagesError`` if `first > last`.
+    /// - Throws: ``InvalidCall/idBufferIsNotTheExpectedSize`` if either buffer has the wrong length;
+    ///   ``CheckPagesError/rangeInvalidRange`` if `first > last`.
     func checkPagesRange(first: CBuffer, last: CBuffer) throws -> Int {
         try validateIDBuffer(first)
         try validateIDBuffer(last)
@@ -85,7 +94,12 @@ public extension PersistentCache {
     /// - Returns: `true` if the page exists, `false` otherwise.
     /// - Throws: Error if the check fails.
     func checkPage(id: RawSpan) throws -> Bool {
-        try id.withUnsafeBytes { try checkPage(id: ($0.baseAddress!, $0.count)) }
+        try id.withUnsafeBytes { idBuf in
+            guard let base = idBuf.baseAddress else {
+                throw InvalidCall.idBufferIsNotTheExpectedSize
+            }
+            return try checkPage(id: (base, idBuf.count))
+        }
     }
 
     /// Tests whether multiple pages exist in the volume.
@@ -95,10 +109,14 @@ public extension PersistentCache {
     /// - Returns: Array of booleans, `true` for each page that exists.
     /// - Throws: Error if the check fails.
     func checkPages(ids: RawSpan) throws -> [Bool] {
-        try ids.withUnsafeBytes { idsBuf in
+        let configuration = try self.configuration
+        return try ids.withUnsafeBytes { idsBuf in
+            guard let idsBase = idsBuf.baseAddress else {
+                throw InvalidCall.idBufferIsNotTheExpectedSize
+            }
             let count = idsBuf.count / configuration.idWidthInt
             var results = [Bool](repeating: false, count: count)
-            try checkPages(ids: (idsBuf.baseAddress!, idsBuf.count), results: &results)
+            try checkPages(ids: (idsBase, idsBuf.count), results: &results)
             return results
         }
     }
@@ -125,12 +143,18 @@ public extension PersistentCache {
     ///
     /// - Returns: The number of pages in the range.
     /// - Throws: Error if the check fails.
-    internal func checkPagesRange(first: RawSpan, last: RawSpan) throws -> Int {
+    func checkPagesRange(first: RawSpan, last: RawSpan) throws -> Int {
         try first.withUnsafeBytes { firstBuf in
-            try last.withUnsafeBytes { lastBuf in
-                try checkPagesRange(
-                    first: (firstBuf.baseAddress!, firstBuf.count),
-                    last: (lastBuf.baseAddress!, lastBuf.count),
+            guard let firstBase = firstBuf.baseAddress else {
+                throw InvalidCall.idBufferIsNotTheExpectedSize
+            }
+            return try last.withUnsafeBytes { lastBuf in
+                guard let lastBase = lastBuf.baseAddress else {
+                    throw InvalidCall.idBufferIsNotTheExpectedSize
+                }
+                return try checkPagesRange(
+                    first: (firstBase, firstBuf.count),
+                    last: (lastBase, lastBuf.count),
                 )
             }
         }
@@ -149,7 +173,12 @@ public extension PersistentCache {
     /// - Returns: `true` if the page exists, `false` otherwise.
     /// - Throws: Error if the check fails.
     func checkPage(id: some ContiguousBytes) throws -> Bool {
-        try id.withUnsafeBytes { try checkPage(id: ($0.baseAddress!, $0.count)) }
+        try id.withUnsafeBytes { idBuf in
+            guard let base = idBuf.baseAddress else {
+                throw InvalidCall.idBufferIsNotTheExpectedSize
+            }
+            return try checkPage(id: (base, idBuf.count))
+        }
     }
 
     /// Tests whether multiple pages exist in the volume.
@@ -159,10 +188,14 @@ public extension PersistentCache {
     /// - Returns: Array of booleans, `true` for each page that exists.
     /// - Throws: Error if the check fails.
     func checkPages(ids: some ContiguousBytes) throws -> [Bool] {
-        try ids.withUnsafeBytes { idsBuf in
+        let configuration = try self.configuration
+        return try ids.withUnsafeBytes { idsBuf in
+            guard let idsBase = idsBuf.baseAddress else {
+                throw InvalidCall.idBufferIsNotTheExpectedSize
+            }
             let count = idsBuf.count / configuration.idWidthInt
             var results = [Bool](repeating: false, count: count)
-            try checkPages(ids: (idsBuf.baseAddress!, idsBuf.count), results: &results)
+            try checkPages(ids: (idsBase, idsBuf.count), results: &results)
             return results
         }
     }
@@ -175,12 +208,18 @@ public extension PersistentCache {
     ///
     /// - Returns: The number of pages in the range.
     /// - Throws: Error if the check fails.
-    internal func checkPagesRange(first: some ContiguousBytes, last: some ContiguousBytes) throws -> Int {
+    func checkPagesRange(first: some ContiguousBytes, last: some ContiguousBytes) throws -> Int {
         try first.withUnsafeBytes { firstBuf in
-            try last.withUnsafeBytes { lastBuf in
-                try checkPagesRange(
-                    first: (firstBuf.baseAddress!, firstBuf.count),
-                    last: (lastBuf.baseAddress!, lastBuf.count),
+            guard let firstBase = firstBuf.baseAddress else {
+                throw InvalidCall.idBufferIsNotTheExpectedSize
+            }
+            return try last.withUnsafeBytes { lastBuf in
+                guard let lastBase = lastBuf.baseAddress else {
+                    throw InvalidCall.idBufferIsNotTheExpectedSize
+                }
+                return try checkPagesRange(
+                    first: (firstBase, firstBuf.count),
+                    last: (lastBase, lastBuf.count),
                 )
             }
         }
@@ -197,17 +236,15 @@ public extension PersistentCache {
     /// - Returns: Array of booleans, `true` for each page that exists.
     /// - Throws: Error if the check fails.
     func checkPages(ids: [Data]) throws -> [Bool] {
-        for id in ids {
-            guard id.count == configuration.idWidthInt else {
+        guard !ids.isEmpty else { return [] }
+        try validateIDArray(ids)
+        let idsSquashed = ids.squashed()
+        return try idsSquashed.withUnsafeBytes { idsBuf in
+            guard let idsBase = idsBuf.baseAddress else {
                 throw InvalidCall.idBufferIsNotTheExpectedSize
             }
-        }
-
-        let idsSquashed = ids.squashed()
-
-        return try idsSquashed.withUnsafeBytes { idsBuf in
             var results = [Bool](repeating: false, count: ids.count)
-            try checkPages(ids: (idsBuf.baseAddress!, idsBuf.count), results: &results)
+            try checkPages(ids: (idsBase, idsBuf.count), results: &results)
             return results
         }
     }
