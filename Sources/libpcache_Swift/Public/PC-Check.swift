@@ -121,21 +121,34 @@ public extension PersistentCache {
 
     /// Tests whether multiple pages exist in the volume.
     ///
-    /// - Parameter ids: Contiguous memory region containing `count` identifiers.
+    /// - Parameters:
+    ///   - ids: Contiguous memory region containing `count` identifiers.
+    ///   - results: Destination buffer; must hold at least `count` elements,
+    ///     where `count = ids.byteCount / idWidth`.
     ///
-    /// - Returns: Array of booleans, `true` for each page that exists.
-    /// - Throws: ``InvalidCall`` on invalid buffer size; ``CheckPagesError`` on check failure;
+    /// - Throws: ``InvalidCall/idBufferIsNotTheExpectedSize`` if `ids.byteCount` is not a multiple of `idWidth`;
+    ///   ``InvalidCall/dataBufferIsNotTheExpectedSize`` if `results` has fewer elements than required;
+    ///   ``CheckPagesError`` on check failure;
     ///   ``CommonErrors``, ``SQLiteError``, or ``UnknownLibPCacheError`` from the underlying operation.
-    func checkPages(ids: RawSpan) throws -> [Bool] {
+    func checkPages(ids: RawSpan, into results: consuming MutableSpan<Bool>) throws {
         let configuration = try self.configuration
-        return try ids.withUnsafeBytes { idsBuf in
+        guard ids.byteCount % configuration.idWidthInt == 0 else {
+            throw InvalidCall.idBufferIsNotTheExpectedSize
+        }
+        let count = ids.byteCount / configuration.idWidthInt
+        guard results.count >= count else {
+            throw InvalidCall.dataBufferIsNotTheExpectedSize
+        }
+        try ids.withUnsafeBytes { idsBuf in
             guard let idsBase = idsBuf.baseAddress else {
                 throw InvalidCall.idBufferIsNotTheExpectedSize
             }
-            let count = idsBuf.count / configuration.idWidthInt
-            var results = [Bool](repeating: false, count: count)
-            try checkPages(ids: (idsBase, idsBuf.count), results: &results)
-            return results
+            try results.withUnsafeMutableBufferPointer { resultsBuf in
+                guard let resultsBase = resultsBuf.baseAddress else {
+                    throw InvalidCall.dataBufferIsNotTheExpectedSize
+                }
+                try checkPages(ids: (idsBase, idsBuf.count), results: resultsBase)
+            }
         }
     }
 
