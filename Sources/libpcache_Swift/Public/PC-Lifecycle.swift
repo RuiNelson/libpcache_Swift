@@ -38,17 +38,30 @@ import Foundation
 /// ```
 ///
 /// - SeeAlso: ``Configuration`` for volume configuration parameters
-public final class PersistentCache: Sendable {
-    /// Opaque handle to the underlying C volume. Zero means already closed.
-    nonisolated(unsafe) var handle: Handle
+public final class PersistentCache: @unchecked Sendable {
+    private let lock: NSLock
+    /// Opaque handle to the underlying C volume. Access only under `lock`. Zero means already closed.
+    private var _handle: Handle
+
+    /// Thread-safe read of the underlying C handle.
+    var handle: Handle {
+        lock.lock()
+        defer { lock.unlock() }
+        return _handle
+    }
 
     init(handle: Handle) {
-        self.handle = handle
+        self._handle = handle
+        self.lock = NSLock()
     }
 
     deinit {
-        if handle != 0 {
-            try? b_close(handle: handle)
+        lock.lock()
+        let h = _handle
+        _handle = 0
+        lock.unlock()
+        if h != 0 {
+            try? b_close(handle: h)
         }
     }
 }
@@ -107,8 +120,11 @@ public extension PersistentCache {
     ///   ``POSIXError`` on I/O failure; ``SQLiteError`` on WAL checkpoint failure;
     ///   ``UnknownLibPCacheError`` for unrecognized C error codes.
     func close() throws {
-        let h = handle
-        handle = 0
+        lock.lock()
+        let h = _handle
+        _handle = 0
+        lock.unlock()
+        guard h != 0 else { throw CommonErrors.invalidHandle }
         try b_close(handle: h)
     }
 }
