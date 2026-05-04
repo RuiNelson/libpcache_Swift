@@ -587,3 +587,60 @@ struct FIFOPolicyTests {
         try cache.close()
     }
 }
+
+// MARK: - RawSpan Operations
+
+struct RawSpanTests {
+    @Test func `multiple pages put check get delete via RawSpan`() throws {
+        try withCache(maxPages: 5) { cache in
+            let ids = [makeID(0x01, width: 16), makeID(0x02, width: 16), makeID(0x03, width: 16)]
+            let pages = [makePage(0xAA, size: 4096), makePage(0xBB, size: 4096), makePage(0xCC, size: 4096)]
+            let idsFlat = ids.squashed()
+            let pagesFlat = pages.squashed()
+
+            // Write all at once using RawSpan
+            try idsFlat.withUnsafeBytes { idsBuf in
+                try pagesFlat.withUnsafeBytes { pagesBuf in
+                    try cache.putPages(
+                        ids: RawSpan(_unsafeBytes: idsBuf),
+                        data: RawSpan(_unsafeBytes: pagesBuf),
+                        durable: false,
+                    )
+                }
+            }
+
+            // Check: every page exists
+            for id in ids {
+                let exists = try id.withUnsafeBytes { idBuf -> Bool in
+                    try cache.checkPage(id: RawSpan(_unsafeBytes: idBuf))
+                }
+                #expect(exists)
+            }
+
+            // Read all at once into a MutableRawSpan and verify content
+            var result = Data(repeating: 0x00, count: 4096 * ids.count)
+            try idsFlat.withUnsafeBytes { idsBuf in
+                try result.withUnsafeMutableBytes { resultBuf in
+                    try cache.getPages(
+                        ids: RawSpan(_unsafeBytes: idsBuf),
+                        into: MutableRawSpan(_unsafeBytes: resultBuf),
+                    )
+                }
+            }
+            #expect(result == pagesFlat)
+
+            // Delete all at once using RawSpan
+            try idsFlat.withUnsafeBytes { idsBuf in
+                try cache.deletePages(ids: RawSpan(_unsafeBytes: idsBuf), durable: false)
+            }
+
+            // Verify every page is gone
+            for id in ids {
+                let gone = try id.withUnsafeBytes { idBuf -> Bool in
+                    try cache.checkPage(id: RawSpan(_unsafeBytes: idBuf))
+                }
+                #expect(!gone)
+            }
+        }
+    }
+}

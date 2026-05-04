@@ -86,13 +86,13 @@ public extension PersistentCache {
     static func create(
         files: FilePair,
         configuration: Configuration,
-        options: (preallocateDatabase: Bool, preallocateDatafile: Bool) = (false, false)
+        options: (preallocateDatabase: Bool, preallocateDatafile: Bool) = (false, false),
     ) throws {
         try b_create(
             paths: files,
             config: configuration,
             preallocateDatabase: options.preallocateDatabase,
-            preallocateDatafile: options.preallocateDatafile
+            preallocateDatafile: options.preallocateDatafile,
         )
     }
 
