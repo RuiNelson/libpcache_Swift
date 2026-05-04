@@ -37,7 +37,10 @@ typealias Handle = pcache_handle
 // MARK: - Lifecycle
 
 /// Creates a new volume on the filesystem.
-/// - Throws: ``CreateVolumeError`` on failure.
+///
+/// - Throws: ``CreateVolumeError`` if the volume cannot be created;
+///   ``POSIXError`` on I/O failure; ``SQLiteError`` on database failure;
+///   ``UnknownLibPCacheError`` for unrecognized C error codes.
 func b_create(
     paths: FilePair,
     config: Configuration,
@@ -58,8 +61,13 @@ func b_create(
 }
 
 /// Opens an existing volume.
+///
+/// - Throws: ``OpenVolumeError`` if the volume cannot be opened;
+///   ``CommonErrors``/`.outOfMemory` on allocation failure;
+///   ``POSIXError`` on I/O failure; ``SQLiteError`` on database failure;
+///   ``UnknownLibPCacheError`` for unrecognized C error codes.
+///
 /// - Returns: Handle to the open volume.
-/// - Throws: ``OpenVolumeError`` on failure.
 func b_open(paths: FilePair) throws -> Handle {
     var err: pcache_open_error = PCACHE_OPEN_OK
     var sqliteErr: Int32 = .init()
@@ -77,7 +85,10 @@ func b_open(paths: FilePair) throws -> Handle {
 }
 
 /// Closes an open volume.
-/// - Throws: ``CloseVolumeError`` on failure.
+///
+/// - Throws: ``CommonErrors``/`.invalidHandle` if the handle is invalid;
+///   ``POSIXError`` on I/O failure; ``SQLiteError`` on WAL checkpoint failure;
+///   ``UnknownLibPCacheError`` for unrecognized C error codes.
 func b_close(handle: Handle) throws {
     var err: pcache_close_error = PCACHE_CLOSE_OK
     var sqliteErr: Int32 = .init()
@@ -89,7 +100,9 @@ func b_close(handle: Handle) throws {
 // MARK: - Introspection
 
 /// Returns the configuration of an open volume.
-/// - Throws: Error if inspection fails.
+///
+/// - Throws: ``CommonErrors``/`.invalidHandle` if the handle is invalid;
+///   ``UnknownLibPCacheError`` for unrecognized C error codes.
 func b_inspectConfiguration(handle: Handle) throws -> Configuration {
     var err: pcache_inspect_configuration_error = PCACHE_INSPECT_CONFIGURATION_OK
     let c = pcache_inspect_configuration(handle, &err)
@@ -98,7 +111,10 @@ func b_inspectConfiguration(handle: Handle) throws -> Configuration {
 }
 
 /// Returns the page counts for an open volume.
-/// - Throws: Error if inspection fails.
+///
+/// - Throws: ``CommonErrors``/`.invalidHandle` if the handle is invalid;
+///   ``SQLiteError`` on database failure;
+///   ``UnknownLibPCacheError`` for unrecognized C error codes.
 func b_inspectPageCount(handle: Handle) throws -> PageCount {
     var err: pcache_inspect_page_count_error = PCACHE_INSPECT_PAGE_COUNT_OK
     var sqliteErr: Int32 = .init()
@@ -110,7 +126,11 @@ func b_inspectPageCount(handle: Handle) throws -> PageCount {
 // MARK: - Put
 
 /// Stores a single page.
-/// - Throws: ``PutPagesError`` on failure.
+///
+/// - Throws: ``PutPagesError`` if the write fails;
+///   ``CommonErrors``/`.invalidHandle` or ``CommonErrors``/`.outOfMemory` for shared failures;
+///   ``POSIXError`` on I/O failure; ``SQLiteError`` on database failure;
+///   ``UnknownLibPCacheError`` for unrecognized C error codes.
 func b_putPage(
     handle: Handle,
     id: UnsafeRawPointer,
@@ -126,7 +146,11 @@ func b_putPage(
 }
 
 /// Stores multiple pages atomically.
-/// - Throws: ``PutPagesError`` on failure.
+///
+/// - Throws: ``PutPagesError`` if the write fails;
+///   ``CommonErrors``/`.invalidHandle` or ``CommonErrors``/`.outOfMemory` for shared failures;
+///   ``POSIXError`` on I/O failure; ``SQLiteError`` on database failure;
+///   ``UnknownLibPCacheError`` for unrecognized C error codes.
 func b_putPages(
     handle: Handle,
     count: Int,
@@ -143,7 +167,11 @@ func b_putPages(
 }
 
 /// Stores multiple pages with auto-derived identifiers.
-/// - Throws: ``PutPagesError`` on failure.
+///
+/// - Throws: ``PutPagesError`` if the write fails;
+///   ``CommonErrors``/`.invalidHandle` or ``CommonErrors``/`.outOfMemory` for shared failures;
+///   ``POSIXError`` on I/O failure; ``SQLiteError`` on database failure;
+///   ``UnknownLibPCacheError`` for unrecognized C error codes.
 func b_putPagesWithCounter(
     handle: Handle,
     count: Int,
@@ -178,7 +206,11 @@ func b_putPagesWithCounter(
 // MARK: - Get
 
 /// Retrieves a single page.
-/// - Throws: ``GetPagesError`` on failure.
+///
+/// - Throws: ``GetPagesError`` if the read fails;
+///   ``CommonErrors``/`.invalidHandle` or ``CommonErrors``/`.outOfMemory` for shared failures;
+///   ``POSIXError`` on I/O failure; ``SQLiteError`` on database failure;
+///   ``UnknownLibPCacheError`` for unrecognized C error codes.
 func b_getPage(handle: Handle, id: UnsafeRawPointer, pageData: UnsafeMutableRawPointer) throws {
     var err: pcache_get_error = PCACHE_GET_OK
     var sqliteErr: Int32 = .init()
@@ -188,7 +220,11 @@ func b_getPage(handle: Handle, id: UnsafeRawPointer, pageData: UnsafeMutableRawP
 }
 
 /// Retrieves multiple pages.
-/// - Throws: ``GetPagesError`` on failure.
+///
+/// - Throws: ``GetPagesError`` if the read fails;
+///   ``CommonErrors``/`.invalidHandle` or ``CommonErrors``/`.outOfMemory` for shared failures;
+///   ``POSIXError`` on I/O failure; ``SQLiteError`` on database failure;
+///   ``UnknownLibPCacheError`` for unrecognized C error codes.
 func b_getPages(handle: Handle, count: Int, ids: UnsafeRawPointer, pageData: UnsafeMutableRawPointer) throws {
     var err: pcache_get_error = PCACHE_GET_OK
     var sqliteErr: Int32 = .init()
@@ -198,7 +234,11 @@ func b_getPages(handle: Handle, count: Int, ids: UnsafeRawPointer, pageData: Uns
 }
 
 /// Retrieves multiple pages with auto-derived identifiers.
-/// - Throws: ``GetPagesError`` on failure.
+///
+/// - Throws: ``GetPagesError`` if the read fails;
+///   ``CommonErrors``/`.invalidHandle` or ``CommonErrors``/`.outOfMemory` for shared failures;
+///   ``POSIXError`` on I/O failure; ``SQLiteError`` on database failure;
+///   ``UnknownLibPCacheError`` for unrecognized C error codes.
 func b_getPagesWithCounter(
     handle: Handle,
     count: Int,
@@ -227,8 +267,13 @@ func b_getPagesWithCounter(
 }
 
 /// Retrieves pages within a range.
+///
+/// - Throws: ``GetPagesError`` if the read fails;
+///   ``CommonErrors``/`.invalidHandle` or ``CommonErrors``/`.outOfMemory` for shared failures;
+///   ``POSIXError`` on I/O failure; ``SQLiteError`` on database failure;
+///   ``UnknownLibPCacheError`` for unrecognized C error codes.
+///
 /// - Returns: Number of pages retrieved.
-/// - Throws: ``GetPagesError`` on failure.
 func b_getPagesRange(
     handle: Handle,
     first: UnsafeRawPointer,
@@ -260,8 +305,13 @@ func b_getPagesRange(
 // MARK: - Check
 
 /// Checks if a single page exists.
+///
+/// - Throws: ``CheckPagesError`` if the check fails;
+///   ``CommonErrors``/`.invalidHandle` or ``CommonErrors``/`.outOfMemory` for shared failures;
+///   ``SQLiteError`` on database failure;
+///   ``UnknownLibPCacheError`` for unrecognized C error codes.
+///
 /// - Returns: `true` if page exists.
-/// - Throws: Error on failure.
 func b_checkPage(handle: Handle, id: UnsafeRawPointer) throws -> Bool {
     var err: pcache_check_error = PCACHE_CHECK_OK
     var sqliteErr: Int32 = .init()
@@ -271,7 +321,11 @@ func b_checkPage(handle: Handle, id: UnsafeRawPointer) throws -> Bool {
 }
 
 /// Checks if multiple pages exist.
-/// - Throws: Error on failure.
+///
+/// - Throws: ``CheckPagesError`` if the check fails;
+///   ``CommonErrors``/`.invalidHandle` or ``CommonErrors``/`.outOfMemory` for shared failures;
+///   ``SQLiteError`` on database failure;
+///   ``UnknownLibPCacheError`` for unrecognized C error codes.
 func b_checkPages(handle: Handle, count: Int, ids: UnsafeRawPointer, results: UnsafeMutablePointer<Bool>) throws {
     var err: pcache_check_error = PCACHE_CHECK_OK
     var sqliteErr: Int32 = .init()
@@ -280,7 +334,11 @@ func b_checkPages(handle: Handle, count: Int, ids: UnsafeRawPointer, results: Un
 }
 
 /// Checks if multiple pages exist using auto-derived identifiers.
-/// - Throws: ``CheckPagesError`` on failure.
+///
+/// - Throws: ``CheckPagesError`` if the check fails;
+///   ``CommonErrors``/`.invalidHandle` or ``CommonErrors``/`.outOfMemory` for shared failures;
+///   ``SQLiteError`` on database failure;
+///   ``UnknownLibPCacheError`` for unrecognized C error codes.
 func b_checkPagesWithCounter(
     handle: Handle,
     count: Int,
@@ -307,8 +365,13 @@ func b_checkPagesWithCounter(
 }
 
 /// Counts pages within a range.
+///
+/// - Throws: ``CheckPagesError`` if the check fails;
+///   ``CommonErrors``/`.invalidHandle` or ``CommonErrors``/`.outOfMemory` for shared failures;
+///   ``SQLiteError`` on database failure;
+///   ``UnknownLibPCacheError`` for unrecognized C error codes.
+///
 /// - Returns: Number of pages in range.
-/// - Throws: ``CheckPagesError`` on failure.
 func b_checkPagesRange(handle: Handle, first: UnsafeRawPointer, last: UnsafeRawPointer) throws -> Int {
     var countOut: UInt32 = 0
     var err: pcache_check_error = PCACHE_CHECK_OK
@@ -321,7 +384,11 @@ func b_checkPagesRange(handle: Handle, first: UnsafeRawPointer, last: UnsafeRawP
 // MARK: - Delete
 
 /// Deletes a single page.
-/// - Throws: Error on failure.
+///
+/// - Throws: ``DeletePagesError`` if the delete fails;
+///   ``CommonErrors``/`.invalidHandle` or ``CommonErrors``/`.outOfMemory` for shared failures;
+///   ``POSIXError`` on I/O failure; ``SQLiteError`` on database failure;
+///   ``UnknownLibPCacheError`` for unrecognized C error codes.
 func b_deletePage(handle: Handle, id: UnsafeRawPointer, wipeDataFile: Bool, durable: Bool) throws {
     var err: pcache_delete_error = PCACHE_DELETE_OK
     var sqliteErr: Int32 = .init()
@@ -331,7 +398,11 @@ func b_deletePage(handle: Handle, id: UnsafeRawPointer, wipeDataFile: Bool, dura
 }
 
 /// Deletes multiple pages.
-/// - Throws: Error on failure.
+///
+/// - Throws: ``DeletePagesError`` if the delete fails;
+///   ``CommonErrors``/`.invalidHandle` or ``CommonErrors``/`.outOfMemory` for shared failures;
+///   ``POSIXError`` on I/O failure; ``SQLiteError`` on database failure;
+///   ``UnknownLibPCacheError`` for unrecognized C error codes.
 func b_deletePages(
     handle: Handle,
     count: Int,
@@ -347,7 +418,11 @@ func b_deletePages(
 }
 
 /// Deletes multiple pages with auto-derived identifiers.
-/// - Throws: ``DeletePagesError`` on failure.
+///
+/// - Throws: ``DeletePagesError`` if the delete fails;
+///   ``CommonErrors``/`.invalidHandle` or ``CommonErrors``/`.outOfMemory` for shared failures;
+///   ``POSIXError`` on I/O failure; ``SQLiteError`` on database failure;
+///   ``UnknownLibPCacheError`` for unrecognized C error codes.
 func b_deletePagesWithCounter(
     handle: Handle,
     count: Int,
@@ -378,7 +453,11 @@ func b_deletePagesWithCounter(
 }
 
 /// Deletes pages within a range.
-/// - Throws: ``DeletePagesError`` on failure.
+///
+/// - Throws: ``DeletePagesError`` if the delete fails;
+///   ``CommonErrors``/`.invalidHandle` or ``CommonErrors``/`.outOfMemory` for shared failures;
+///   ``POSIXError`` on I/O failure; ``SQLiteError`` on database failure;
+///   ``UnknownLibPCacheError`` for unrecognized C error codes.
 func b_deletePagesRange(
     handle: Handle,
     first: UnsafeRawPointer,
@@ -396,7 +475,11 @@ func b_deletePagesRange(
 // MARK: - Maintenance
 
 /// Defragments the volume, relocating pages contiguously.
-/// - Throws: ``DefragmentVolumeError`` if cancelled.
+///
+/// - Throws: ``DefragmentVolumeError`` if defragmentation fails;
+///   ``CommonErrors``/`.invalidHandle` or ``CommonErrors``/`.outOfMemory` for shared failures;
+///   ``POSIXError`` on I/O failure; ``SQLiteError`` on database failure;
+///   ``UnknownLibPCacheError`` for unrecognized C error codes.
 func b_defragment(
     handle: Handle,
     progress: (@Sendable (Double) -> Bool)?,
@@ -413,7 +496,11 @@ func b_defragment(
 }
 
 /// Adjusts the maximum page count.
-/// - Throws: ``VolumeSetMaxPagesError`` if reduction would discard pages.
+///
+/// - Throws: ``VolumeSetMaxPagesError`` if the adjustment fails;
+///   ``CommonErrors``/`.invalidHandle` or ``CommonErrors``/`.outOfMemory` for shared failures;
+///   ``POSIXError`` on I/O failure; ``SQLiteError`` on database failure;
+///   ``UnknownLibPCacheError`` for unrecognized C error codes.
 func b_setMaxPages(handle: Handle, newMaxPages: UInt32, durable: Bool) throws {
     var err: pcache_set_max_pages_error = PCACHE_SET_MAX_PAGES_OK
     var sqliteErr: Int32 = .init()
@@ -423,7 +510,10 @@ func b_setMaxPages(handle: Handle, newMaxPages: UInt32, durable: Bool) throws {
 }
 
 /// Preallocates space in an open volume.
-/// - Throws: Error on failure.
+///
+/// - Throws: ``CommonErrors``/`.invalidHandle` if the handle is invalid;
+///   ``POSIXError`` on I/O failure; ``SQLiteError`` on database failure;
+///   ``UnknownLibPCacheError`` for unrecognized C error codes.
 func b_preallocate(handle: Handle, database: Bool, datafile: Bool, durable: Bool) throws {
     var err: pcache_preallocate_error = PCACHE_PREALLOCATE_OK
     var sqliteErr: Int32 = .init()

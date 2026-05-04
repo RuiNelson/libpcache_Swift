@@ -67,7 +67,9 @@ public extension PersistentCache {
     ///     enabling O(1) allocation on subsequent inserts.
     ///   - options.preallocateDatafile: If `true`, extend the data file to its maximum size immediately.
     ///
-    /// - Throws: ``CreateVolumeError`` if creation fails.
+    /// - Throws: ``CreateVolumeError`` if the volume cannot be created;
+    ///   ``POSIXError`` on I/O failure; ``SQLiteError`` on database failure;
+    ///   ``UnknownLibPCacheError`` for unrecognized C error codes.
     static func create(
         files: FilePair,
         configuration: Configuration,
@@ -87,7 +89,10 @@ public extension PersistentCache {
     ///
     /// - Parameter files: Paths to the database and data files.
     ///
-    /// - Throws: ``OpenVolumeError`` if the volume cannot be opened.
+    /// - Throws: ``OpenVolumeError`` if the volume cannot be opened;
+    ///   ``CommonErrors/outOfMemory`` on allocation failure;
+    ///   ``POSIXError`` on I/O failure; ``SQLiteError`` on database failure;
+    ///   ``UnknownLibPCacheError`` for unrecognized C error codes.
     convenience init(files: FilePair) throws {
         let h = try b_open(paths: files)
         self.init(handle: h)
@@ -98,7 +103,9 @@ public extension PersistentCache {
     /// After this call the object must not be used again.
     /// The volume is also closed automatically on deallocation, but errors are silenced in that path.
     ///
-    /// - Throws: ``POSIXError`` if an I/O flush fails; ``SQLiteError`` if the WAL checkpoint fails.
+    /// - Throws: ``CommonErrors/invalidHandle`` if the volume handle is invalid;
+    ///   ``POSIXError`` on I/O failure; ``SQLiteError`` on WAL checkpoint failure;
+    ///   ``UnknownLibPCacheError`` for unrecognized C error codes.
     func close() throws {
         let h = handle
         handle = 0

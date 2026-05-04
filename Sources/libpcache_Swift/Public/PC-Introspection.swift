@@ -8,7 +8,8 @@ public extension PersistentCache {
     /// Returns the current configuration of this volume.
     ///
     /// - Returns: The ``Configuration`` stored in the volume's index.
-    /// - Throws: ``CommonErrors/invalidHandle`` if the volume has been closed.
+    /// - Throws: ``CommonErrors/invalidHandle`` if the volume has been closed;
+    ///   ``UnknownLibPCacheError`` for unrecognized C error codes.
     ///
     /// - SeeAlso: ``Configuration`` for the meaning of each field.
     var configuration: Configuration {
@@ -20,7 +21,9 @@ public extension PersistentCache {
     /// Returns the number of used and free pages in this volume.
     ///
     /// - Returns: ``PageCount`` with the current occupancy.
-    /// - Throws: ``CommonErrors/invalidHandle`` if the volume has been closed; ``SQLiteError`` on database failure.
+    /// - Throws: ``CommonErrors/invalidHandle`` if the volume handle is invalid;
+    ///   ``SQLiteError`` on database failure;
+    ///   ``UnknownLibPCacheError`` for unrecognized C error codes.
     func pageCounts() throws -> PageCount {
         try b_inspectPageCount(handle: handle)
     }

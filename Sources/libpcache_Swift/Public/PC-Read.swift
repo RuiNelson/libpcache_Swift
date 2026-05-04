@@ -14,7 +14,11 @@ public extension PersistentCache {
     ///   - data: Destination buffer; must be exactly ``Configuration/pageSizeInt`` bytes.
     ///
     /// - Throws: ``InvalidCall/idBufferIsNotTheExpectedSize`` or ``InvalidCall/dataBufferIsNotTheExpectedSize``
-    ///   if either buffer has the wrong length; ``GetPagesError`` if the page is not found or an error occurs.
+    ///   if either buffer has the wrong length; ``GetPagesError`` on read failure;
+    ///   ``CommonErrors/invalidHandle`` if the volume handle is invalid;
+    ///   ``CommonErrors/outOfMemory`` on allocation failure;
+    ///   ``POSIXError`` on I/O failure; ``SQLiteError`` on database failure;
+    ///   ``UnknownLibPCacheError`` for unrecognized C error codes.
     func getPage(id: CBuffer, data: CMutableBuffer) throws {
         try validateIDBuffer(id)
         try validateDataBuffer(data)
@@ -32,7 +36,11 @@ public extension PersistentCache {
     ///
     /// - Throws: ``InvalidCall/idBufferIsNotTheExpectedSize`` or
     ///   ``InvalidCall/numberOfItemsInIDBufferDoesNotMatchTheNumberOfItemsInDataBuffer``
-    ///   if the buffers are mismatched; ``GetPagesError`` if any page is not found or an error occurs.
+    ///   if the buffers are mismatched; ``GetPagesError`` on read failure;
+    ///   ``CommonErrors/invalidHandle`` if the volume handle is invalid;
+    ///   ``CommonErrors/outOfMemory`` on allocation failure;
+    ///   ``POSIXError`` on I/O failure; ``SQLiteError`` on database failure;
+    ///   ``UnknownLibPCacheError`` for unrecognized C error codes.
     func getPages(ids: CBuffer, data: CMutableBuffer) throws {
         let count = try validateMatchingCounts(ids: ids, pages: data)
         try b_getPages(handle: handle, count: count, ids: ids.pointer, pageData: data.pointer)
@@ -45,7 +53,11 @@ public extension PersistentCache {
     ///   - data: Destination buffer; must be `count * pageSize` bytes.
     ///
     /// - Throws: ``InvalidCall/idBufferIsNotTheExpectedSize`` if the counter template width is wrong;
-    ///   ``GetPagesError`` if any computed identifier is not found or an error occurs.
+    ///   ``GetPagesError`` on read failure;
+    ///   ``CommonErrors/invalidHandle`` if the volume handle is invalid;
+    ///   ``CommonErrors/outOfMemory`` on allocation failure;
+    ///   ``POSIXError`` on I/O failure; ``SQLiteError`` on database failure;
+    ///   ``UnknownLibPCacheError`` for unrecognized C error codes.
     func getPages(
         counter: Counter,
         data: CMutableBuffer,
@@ -86,7 +98,11 @@ public extension PersistentCache {
     ///   ``InvalidCall/numberOfItemsInIDBufferDoesNotMatchTheNumberOfItemsInDataBuffer``
     ///   if `idsOut` and `pagesOut` have different capacities;
     ///   ``GetPagesError/rangeInvalidRange`` if `first > last`;
-    ///   ``GetPagesError/rangeBufferTooSmall`` if the output buffers are too small.
+    ///   ``GetPagesError/rangeBufferTooSmall`` if the output buffers are too small;
+    ///   ``CommonErrors/invalidHandle`` if the volume handle is invalid;
+    ///   ``CommonErrors/outOfMemory`` on allocation failure;
+    ///   ``POSIXError`` on I/O failure; ``SQLiteError`` on database failure;
+    ///   ``UnknownLibPCacheError`` for unrecognized C error codes.
     func getPagesRange(
         first: CBuffer,
         last: CBuffer,
@@ -132,7 +148,8 @@ public extension PersistentCache {
     /// - Parameter id: Page identifier.
     ///
     /// - Returns: The page data, exactly ``Configuration/pageSizeInt`` bytes.
-    /// - Throws: ``GetPagesError`` if the page is not found or an error occurs.
+    /// - Throws: ``InvalidCall`` on invalid buffer size; ``GetPagesError`` on read failure;
+    ///   ``CommonErrors``, ``POSIXError``, ``SQLiteError``, or ``UnknownLibPCacheError`` from the underlying operation.
     func getPage(id: RawSpan) throws -> [UInt8] {
         let configuration = try self.configuration
         var data = [UInt8](repeating: 0, count: configuration.pageSizeInt)
@@ -158,7 +175,8 @@ public extension PersistentCache {
     /// - Parameter ids: Contiguous memory region containing `count` identifiers.
     ///
     /// - Returns: `Data` containing all retrieved pages concatenated.
-    /// - Throws: ``GetPagesError`` if any page is not found or an error occurs.
+    /// - Throws: ``InvalidCall`` on invalid buffer size; ``GetPagesError`` on read failure;
+    ///   ``CommonErrors``, ``POSIXError``, ``SQLiteError``, or ``UnknownLibPCacheError`` from the underlying operation.
     func getPages(ids: RawSpan) throws -> Data {
         let configuration = try self.configuration
         return try ids.withUnsafeBytes { idsBuf in
@@ -187,7 +205,8 @@ public extension PersistentCache {
     ///   - last: Upper bound of the identifier range (inclusive).
     ///
     /// - Returns: Tuple containing `(ids, pages)` where `ids` is the identifiers and `pages` is the data.
-    /// - Throws: ``GetPagesError`` if an error occurs.
+    /// - Throws: ``InvalidCall`` on invalid buffer size; ``GetPagesError`` on read failure;
+    ///   ``CommonErrors``, ``POSIXError``, ``SQLiteError``, or ``UnknownLibPCacheError`` from the underlying operation.
     func getPagesRange(first: RawSpan, last: RawSpan) throws -> (ids: Data, pages: Data) {
         let bufferCapacity = try checkPagesRange(first: first, last: last)
         guard bufferCapacity > 0 else { return (Data(), Data()) }
@@ -204,8 +223,7 @@ public extension PersistentCache {
                         guard let firstBase = firstBuf.baseAddress,
                               let lastBase = lastBuf.baseAddress,
                               let idsBase = idsBuf.baseAddress,
-                              let pagesBase = pagesBuf.baseAddress
-                        else { throw InvalidCall.idBufferIsNotTheExpectedSize }
+                              let pagesBase = pagesBuf.baseAddress else { throw InvalidCall.idBufferIsNotTheExpectedSize }
                         actualCount = try getPagesRange(
                             first: (firstBase, firstBuf.count),
                             last: (lastBase, lastBuf.count),
@@ -219,7 +237,7 @@ public extension PersistentCache {
 
         return (
             idsOut.prefix(actualCount * configuration.idWidthInt),
-            pagesOut.prefix(actualCount * configuration.pageSizeInt)
+            pagesOut.prefix(actualCount * configuration.pageSizeInt),
         )
     }
 }
@@ -232,7 +250,8 @@ public extension PersistentCache {
     /// - Parameter id: Page identifier.
     ///
     /// - Returns: The page data.
-    /// - Throws: ``GetPagesError`` if the page is not found or an error occurs.
+    /// - Throws: ``InvalidCall`` on invalid buffer size; ``GetPagesError`` on read failure;
+    ///   ``CommonErrors``, ``POSIXError``, ``SQLiteError``, or ``UnknownLibPCacheError`` from the underlying operation.
     func getPage(id: some ContiguousBytes) throws -> Data {
         let configuration = try self.configuration
         var data = Data(count: configuration.pageSizeInt)
@@ -258,7 +277,8 @@ public extension PersistentCache {
     /// - Parameter ids: Memory region containing `count` identifiers.
     ///
     /// - Returns: `Data` containing all retrieved pages concatenated.
-    /// - Throws: ``GetPagesError`` if any page is not found or an error occurs.
+    /// - Throws: ``InvalidCall`` on invalid buffer size; ``GetPagesError`` on read failure;
+    ///   ``CommonErrors``, ``POSIXError``, ``SQLiteError``, or ``UnknownLibPCacheError`` from the underlying operation.
     func getPages(ids: some ContiguousBytes) throws -> Data {
         let configuration = try self.configuration
         return try ids.withUnsafeBytes { idsBuf in
@@ -288,7 +308,8 @@ public extension PersistentCache {
     ///
     /// - Returns: `Data` containing all retrieved pages concatenated.
     /// - Throws: ``InvalidCall/invalidArguments`` if `count` is negative;
-    ///   ``GetPagesError`` if any computed identifier is not found or an error occurs.
+    ///   ``InvalidCall`` on invalid buffer size; ``GetPagesError`` on read failure;
+    ///   ``CommonErrors``, ``POSIXError``, ``SQLiteError``, or ``UnknownLibPCacheError`` from the underlying operation.
     func getPages(counter: Counter, count: Int) throws -> Data {
         guard count >= 0 else { throw InvalidCall.invalidArguments }
         let configuration = try self.configuration
@@ -312,7 +333,8 @@ public extension PersistentCache {
     ///   - last: Upper bound of the identifier range (inclusive).
     ///
     /// - Returns: Tuple containing `(ids, pages)`.
-    /// - Throws: ``GetPagesError`` if an error occurs.
+    /// - Throws: ``InvalidCall`` on invalid buffer size; ``GetPagesError`` on read failure;
+    ///   ``CommonErrors``, ``POSIXError``, ``SQLiteError``, or ``UnknownLibPCacheError`` from the underlying operation.
     func getPagesRange(first: some ContiguousBytes, last: some ContiguousBytes) throws -> (ids: Data, pages: Data) {
         let bufferCapacity = try checkPagesRange(first: first, last: last)
         guard bufferCapacity > 0 else { return (Data(), Data()) }
@@ -329,8 +351,7 @@ public extension PersistentCache {
                         guard let firstBase = firstBuf.baseAddress,
                               let lastBase = lastBuf.baseAddress,
                               let idsBase = idsBuf.baseAddress,
-                              let pagesBase = pagesBuf.baseAddress
-                        else { throw InvalidCall.idBufferIsNotTheExpectedSize }
+                              let pagesBase = pagesBuf.baseAddress else { throw InvalidCall.idBufferIsNotTheExpectedSize }
                         actualCount = try getPagesRange(
                             first: (firstBase, firstBuf.count),
                             last: (lastBase, lastBuf.count),
@@ -344,7 +365,7 @@ public extension PersistentCache {
 
         return (
             idsOut.prefix(actualCount * configuration.idWidthInt),
-            pagesOut.prefix(actualCount * configuration.pageSizeInt)
+            pagesOut.prefix(actualCount * configuration.pageSizeInt),
         )
     }
 
@@ -355,7 +376,8 @@ public extension PersistentCache {
     ///   - last: Upper bound of the identifier range (inclusive).
     ///
     /// - Returns: Array of `(id, page)` tuples, one per retrieved page.
-    /// - Throws: ``GetPagesError`` if an error occurs.
+    /// - Throws: ``InvalidCall`` on invalid buffer size; ``GetPagesError`` on read failure;
+    ///   ``CommonErrors``, ``POSIXError``, ``SQLiteError``, or ``UnknownLibPCacheError`` from the underlying operation.
     func getPagesRange(first: some ContiguousBytes, last: some ContiguousBytes) throws -> [(id: Data, page: Data)] {
         let bufferCapacity = try checkPagesRange(first: first, last: last)
         guard bufferCapacity > 0 else { return [] }
@@ -372,8 +394,7 @@ public extension PersistentCache {
                         guard let firstBase = firstBuf.baseAddress,
                               let lastBase = lastBuf.baseAddress,
                               let idsBase = idsBuf.baseAddress,
-                              let pagesBase = pagesBuf.baseAddress
-                        else { throw InvalidCall.idBufferIsNotTheExpectedSize }
+                              let pagesBase = pagesBuf.baseAddress else { throw InvalidCall.idBufferIsNotTheExpectedSize }
                         actualCount = try getPagesRange(
                             first: (firstBase, firstBuf.count),
                             last: (lastBase, lastBuf.count),
@@ -392,7 +413,7 @@ public extension PersistentCache {
             let pageStart = i * configuration.pageSizeInt
             result.append((
                 id: idsOut[idStart ..< idStart + configuration.idWidthInt],
-                page: pagesOut[pageStart ..< pageStart + configuration.pageSizeInt]
+                page: pagesOut[pageStart ..< pageStart + configuration.pageSizeInt],
             ))
         }
         return result
@@ -407,7 +428,8 @@ public extension PersistentCache {
     /// - Parameter ids: Array of page identifiers.
     ///
     /// - Returns: `Data` containing all retrieved pages concatenated.
-    /// - Throws: ``GetPagesError`` if any page is not found or an error occurs.
+    /// - Throws: ``InvalidCall`` on invalid buffer size; ``GetPagesError`` on read failure;
+    ///   ``CommonErrors``, ``POSIXError``, ``SQLiteError``, or ``UnknownLibPCacheError`` from the underlying operation.
     func getPages(ids: [Data]) throws -> Data {
         guard !ids.isEmpty else { return Data() }
         try validateIDArray(ids)
@@ -436,7 +458,8 @@ public extension PersistentCache {
     /// - Parameter ids: Array of page identifiers.
     ///
     /// - Returns: Array of `Data` objects, one per page.
-    /// - Throws: ``GetPagesError`` if any page is not found or an error occurs.
+    /// - Throws: ``InvalidCall`` on invalid buffer size; ``GetPagesError`` on read failure;
+    ///   ``CommonErrors``, ``POSIXError``, ``SQLiteError``, or ``UnknownLibPCacheError`` from the underlying operation.
     func getPages(ids: [Data]) throws -> [Data] {
         guard !ids.isEmpty else { return [] }
         let configuration = try self.configuration

@@ -15,7 +15,11 @@ public extension PersistentCache {
     ///
     /// - Returns: `true` if the page exists, `false` otherwise.
     /// - Throws: ``InvalidCall/idBufferIsNotTheExpectedSize`` if `id` has the wrong length;
-    ///   ``CommonErrors`` or ``SQLiteError`` on database failure.
+    ///   ``CheckPagesError`` on check failure;
+    ///   ``CommonErrors/invalidHandle`` if the volume handle is invalid;
+    ///   ``CommonErrors/outOfMemory`` on allocation failure;
+    ///   ``SQLiteError`` on database failure;
+    ///   ``UnknownLibPCacheError`` for unrecognized C error codes.
     func checkPage(id: CBuffer) throws -> Bool {
         try validateIDBuffer(id)
         return try b_checkPage(handle: handle, id: id.pointer)
@@ -29,7 +33,11 @@ public extension PersistentCache {
     ///     page that exists, `false` otherwise.
     ///
     /// - Throws: ``InvalidCall/idBufferIsNotTheExpectedSize`` if `ids` is not a multiple of `idWidth`;
-    ///   ``CommonErrors`` or ``SQLiteError`` on database failure.
+    ///   ``CheckPagesError`` on check failure;
+    ///   ``CommonErrors/invalidHandle`` if the volume handle is invalid;
+    ///   ``CommonErrors/outOfMemory`` on allocation failure;
+    ///   ``SQLiteError`` on database failure;
+    ///   ``UnknownLibPCacheError`` for unrecognized C error codes.
     func checkPages(ids: CBuffer, results: UnsafeMutablePointer<Bool>) throws {
         let count = try itemCount(fromIDs: ids)
         try b_checkPages(handle: handle, count: count, ids: ids.pointer, results: results)
@@ -45,7 +53,11 @@ public extension PersistentCache {
     /// - Throws: ``InvalidCall/invalidArguments`` if `count` is negative;
     ///   ``InvalidCall/idBufferIsNotTheExpectedSize`` if the counter template width is wrong;
     ///   ``CheckPagesError/invalidArgument`` if `position` is out of bounds, the counter overflows,
-    ///   or `endianness` is invalid.
+    ///   or `endianness` is invalid;
+    ///   ``CommonErrors/invalidHandle`` if the volume handle is invalid;
+    ///   ``CommonErrors/outOfMemory`` on allocation failure;
+    ///   ``SQLiteError`` on database failure;
+    ///   ``UnknownLibPCacheError`` for unrecognized C error codes.
     func checkPages(counter: Counter, count: Int, results: UnsafeMutablePointer<Bool>) throws {
         guard count >= 0 else { throw InvalidCall.invalidArguments }
         try validateCounter(counter)
@@ -76,7 +88,11 @@ public extension PersistentCache {
     /// - Returns: The number of pages in the range.
     ///
     /// - Throws: ``InvalidCall/idBufferIsNotTheExpectedSize`` if either buffer has the wrong length;
-    ///   ``CheckPagesError/rangeInvalidRange`` if `first > last`.
+    ///   ``CheckPagesError/rangeInvalidRange`` if `first > last`;
+    ///   ``CommonErrors/invalidHandle`` if the volume handle is invalid;
+    ///   ``CommonErrors/outOfMemory`` on allocation failure;
+    ///   ``SQLiteError`` on database failure;
+    ///   ``UnknownLibPCacheError`` for unrecognized C error codes.
     func checkPagesRange(first: CBuffer, last: CBuffer) throws -> Int {
         try validateIDBuffer(first)
         try validateIDBuffer(last)
@@ -92,7 +108,8 @@ public extension PersistentCache {
     /// - Parameter id: Page identifier.
     ///
     /// - Returns: `true` if the page exists, `false` otherwise.
-    /// - Throws: Error if the check fails.
+    /// - Throws: ``InvalidCall`` on invalid buffer size; ``CheckPagesError`` on check failure;
+    ///   ``CommonErrors``, ``SQLiteError``, or ``UnknownLibPCacheError`` from the underlying operation.
     func checkPage(id: RawSpan) throws -> Bool {
         try id.withUnsafeBytes { idBuf in
             guard let base = idBuf.baseAddress else {
@@ -107,7 +124,8 @@ public extension PersistentCache {
     /// - Parameter ids: Contiguous memory region containing `count` identifiers.
     ///
     /// - Returns: Array of booleans, `true` for each page that exists.
-    /// - Throws: Error if the check fails.
+    /// - Throws: ``InvalidCall`` on invalid buffer size; ``CheckPagesError`` on check failure;
+    ///   ``CommonErrors``, ``SQLiteError``, or ``UnknownLibPCacheError`` from the underlying operation.
     func checkPages(ids: RawSpan) throws -> [Bool] {
         let configuration = try self.configuration
         return try ids.withUnsafeBytes { idsBuf in
@@ -128,7 +146,9 @@ public extension PersistentCache {
     ///   - count: Number of pages to check.
     ///
     /// - Returns: Array of booleans, `true` for each page that exists.
-    /// - Throws: Error if the check fails.
+    /// - Throws: ``InvalidCall/invalidArguments`` if `count` is negative;
+    ///   ``InvalidCall`` on invalid buffer size; ``CheckPagesError`` on check failure;
+    ///   ``CommonErrors``, ``SQLiteError``, or ``UnknownLibPCacheError`` from the underlying operation.
     func checkPages(counter: Counter, count: Int) throws -> [Bool] {
         var results = [Bool](repeating: false, count: count)
         try checkPages(counter: counter, count: count, results: &results)
@@ -142,7 +162,8 @@ public extension PersistentCache {
     ///   - last: Upper bound of the identifier range (inclusive).
     ///
     /// - Returns: The number of pages in the range.
-    /// - Throws: Error if the check fails.
+    /// - Throws: ``InvalidCall`` on invalid buffer size; ``CheckPagesError`` on check failure;
+    ///   ``CommonErrors``, ``SQLiteError``, or ``UnknownLibPCacheError`` from the underlying operation.
     func checkPagesRange(first: RawSpan, last: RawSpan) throws -> Int {
         try first.withUnsafeBytes { firstBuf in
             guard let firstBase = firstBuf.baseAddress else {
@@ -171,7 +192,8 @@ public extension PersistentCache {
     /// - Parameter id: Page identifier.
     ///
     /// - Returns: `true` if the page exists, `false` otherwise.
-    /// - Throws: Error if the check fails.
+    /// - Throws: ``InvalidCall`` on invalid buffer size; ``CheckPagesError`` on check failure;
+    ///   ``CommonErrors``, ``SQLiteError``, or ``UnknownLibPCacheError`` from the underlying operation.
     func checkPage(id: some ContiguousBytes) throws -> Bool {
         try id.withUnsafeBytes { idBuf in
             guard let base = idBuf.baseAddress else {
@@ -186,7 +208,8 @@ public extension PersistentCache {
     /// - Parameter ids: Memory region containing `count` identifiers.
     ///
     /// - Returns: Array of booleans, `true` for each page that exists.
-    /// - Throws: Error if the check fails.
+    /// - Throws: ``InvalidCall`` on invalid buffer size; ``CheckPagesError`` on check failure;
+    ///   ``CommonErrors``, ``SQLiteError``, or ``UnknownLibPCacheError`` from the underlying operation.
     func checkPages(ids: some ContiguousBytes) throws -> [Bool] {
         let configuration = try self.configuration
         return try ids.withUnsafeBytes { idsBuf in
@@ -207,7 +230,8 @@ public extension PersistentCache {
     ///   - last: Upper bound of the identifier range (inclusive).
     ///
     /// - Returns: The number of pages in the range.
-    /// - Throws: Error if the check fails.
+    /// - Throws: ``InvalidCall`` on invalid buffer size; ``CheckPagesError`` on check failure;
+    ///   ``CommonErrors``, ``SQLiteError``, or ``UnknownLibPCacheError`` from the underlying operation.
     func checkPagesRange(first: some ContiguousBytes, last: some ContiguousBytes) throws -> Int {
         try first.withUnsafeBytes { firstBuf in
             guard let firstBase = firstBuf.baseAddress else {
@@ -234,7 +258,8 @@ public extension PersistentCache {
     /// - Parameter ids: Array of page identifiers.
     ///
     /// - Returns: Array of booleans, `true` for each page that exists.
-    /// - Throws: Error if the check fails.
+    /// - Throws: ``InvalidCall`` on invalid buffer size; ``CheckPagesError`` on check failure;
+    ///   ``CommonErrors``, ``SQLiteError``, or ``UnknownLibPCacheError`` from the underlying operation.
     func checkPages(ids: [Data]) throws -> [Bool] {
         guard !ids.isEmpty else { return [] }
         try validateIDArray(ids)

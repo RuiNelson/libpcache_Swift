@@ -26,7 +26,11 @@ public extension PersistentCache {
     ///   - durable: If `true`, block until data is durable on disk.
     ///   - progress: Closure called after each page; return `false` to cancel.
     ///
-    /// - Throws: ``DefragmentVolumeError`` if the progress callback cancels the operation.
+    /// - Throws: ``DefragmentVolumeError`` if the progress callback cancels the operation;
+    ///   ``CommonErrors/invalidHandle`` if the volume handle is invalid;
+    ///   ``CommonErrors/outOfMemory`` on allocation failure;
+    ///   ``POSIXError`` on I/O failure; ``SQLiteError`` on database failure;
+    ///   ``UnknownLibPCacheError`` for unrecognized C error codes.
     func defragment(shrinkFile: Bool, durable: Bool = true, progress: @escaping @Sendable (Double) -> Bool) throws {
         try b_defragment(handle: handle, progress: progress, shrinkFile: shrinkFile, durable: durable)
     }
@@ -46,7 +50,11 @@ public extension PersistentCache {
     ///   - durable: If `true`, block until data is durable on disk.
     ///
     /// - Throws: ``InvalidCall/invalidArguments`` if `maxPages` is ≤ 0;
-    ///   ``VolumeSetMaxPagesError`` if the reduction would discard pages on a FIXED volume.
+    ///   ``VolumeSetMaxPagesError`` if the reduction would discard pages on a FIXED volume;
+    ///   ``CommonErrors/invalidHandle`` if the volume handle is invalid;
+    ///   ``CommonErrors/outOfMemory`` on allocation failure;
+    ///   ``POSIXError`` on I/O failure; ``SQLiteError`` on database failure;
+    ///   ``UnknownLibPCacheError`` for unrecognized C error codes.
     func setNewMaxPages(_ maxPages: Int, durable: Bool = true) throws {
         guard maxPages > 0, maxPages <= INT_MAX else {
             throw InvalidCall.invalidArguments
@@ -63,7 +71,9 @@ public extension PersistentCache {
     ///   - durable: If `true`, block until data is durable on disk.
     ///
     /// - Throws: ``InvalidCall/invalidArguments`` if both flags are `false`;
-    ///   ``POSIXError`` or ``SQLiteError`` if preallocation fails.
+    ///   ``CommonErrors/invalidHandle`` if the volume handle is invalid;
+    ///   ``POSIXError`` on I/O failure; ``SQLiteError`` on database failure;
+    ///   ``UnknownLibPCacheError`` for unrecognized C error codes.
     func preallocate(database: Bool, datafile: Bool, durable: Bool = true) throws {
         guard database || datafile else {
             throw InvalidCall.invalidArguments

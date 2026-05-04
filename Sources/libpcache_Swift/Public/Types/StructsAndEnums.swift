@@ -101,7 +101,8 @@ public struct Configuration: Sendable {
     ///   - idWidth: Length of the identifier in bytes. Must be greater than zero.
     ///   - capacityPolicy: Eviction policy applied when the volume is full.
     ///
-    /// - Returns: `nil` if the capacity is not a valid multiple of the page size, or if `pageSize` or `idWidth` is zero.
+    /// - Returns: `nil` if the capacity is not a valid multiple of the page size, or if `pageSize` or `idWidth` is
+    /// zero.
     public init?(capacity: Int64, pageSize: Int, idWidth: Int, capacityPolicy: CapacityPolicy) {
         guard pageSize > 0, idWidth > 0 else {
             return nil
@@ -229,7 +230,8 @@ public struct Counter: Sendable {
     public mutating func advance(_ by: Int) {
         if by < 0 {
             initialValue = initialValue - UInt32(-by)
-        } else {
+        }
+        else {
             initialValue = initialValue + UInt32(by)
         }
     }
@@ -240,7 +242,8 @@ public struct Counter: Sendable {
     public mutating func backwards(_ by: Int) {
         if by < 0 {
             initialValue = initialValue + UInt32(-by)
-        } else {
+        }
+        else {
             initialValue = initialValue - UInt32(by)
         }
     }
