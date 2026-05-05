@@ -1,4 +1,4 @@
-# CLAUDE.md
+# AGENTS.md
 
 This file provides guidance to Claude Code (claude.ai/code) or other agents when working with code in this repository.
 
@@ -49,7 +49,7 @@ Sources/libpcache_Swift/
 ### Layer Pattern
 
 1. **C layer** (`UnsafeBuffer`/`UnsafeMutableBuffer`): raw pointer signatures
-2. **Swift layer** (`RawSpan` = `UnsafeBuffer`): wrappers that manage pointer lifecycle
+2. **Swift layer** (`RawSpan`): wrappers that manage pointer lifecycle
 3. **Foundation layer** (`some ContiguousBytes`): public API accepting `Data`, `[UInt8]`, etc.
 
 The type `Handle` is an alias for `pcache_handle` (opaque C type). The `PersistentCache` class holds the handle and exposes methods via extensions organized by functional domain.

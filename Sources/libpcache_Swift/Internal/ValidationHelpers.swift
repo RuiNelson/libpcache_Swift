@@ -22,7 +22,7 @@ extension PersistentCache {
     /// - Throws: ``InvalidCall/idBufferIsNotTheExpectedSize`` if not divisible by idWidth.
     func validateIDsBuffer(_ buffer: CBuffer) throws {
         let configuration = try self.configuration
-        guard buffer.count % configuration.idWidthInt == 0 else {
+        guard buffer.count.isMultiple(of: configuration.idWidthInt) else {
             throw InvalidCall.idBufferIsNotTheExpectedSize
         }
     }
@@ -49,7 +49,7 @@ extension PersistentCache {
     /// - Throws: ``InvalidCall/dataBufferIsNotTheExpectedSize`` if not divisible by pageSize.
     func validatePagesBuffer(_ buffer: CBuffer) throws {
         let configuration = try self.configuration
-        guard buffer.count % configuration.pageSizeInt == 0 else {
+        guard buffer.count.isMultiple(of: configuration.pageSizeInt) else {
             throw InvalidCall.dataBufferIsNotTheExpectedSize
         }
     }
@@ -58,7 +58,7 @@ extension PersistentCache {
     /// - Throws: ``InvalidCall/dataBufferIsNotTheExpectedSize`` if not divisible by pageSize.
     func validatePagesBuffer(_ buffer: CMutableBuffer) throws {
         let configuration = try self.configuration
-        guard buffer.count % configuration.pageSizeInt == 0 else {
+        guard buffer.count.isMultiple(of: configuration.pageSizeInt) else {
             throw InvalidCall.dataBufferIsNotTheExpectedSize
         }
     }
@@ -75,22 +75,18 @@ extension PersistentCache {
     /// Validates that an array of Data IDs all have the correct size.
     /// - Throws: ``InvalidCall/idBufferIsNotTheExpectedSize`` if any ID has wrong size.
     func validateIDArray(_ ids: [Data]) throws {
-        let configuration = try self.configuration
-        for id in ids {
-            guard id.count == configuration.idWidthInt else {
-                throw InvalidCall.idBufferIsNotTheExpectedSize
-            }
+        let width = try configuration.idWidthInt
+        guard ids.allSatisfy({ $0.count == width }) else {
+            throw InvalidCall.idBufferIsNotTheExpectedSize
         }
     }
 
     /// Validates that an array of Data pages all have the correct size.
     /// - Throws: ``InvalidCall/dataBufferIsNotTheExpectedSize`` if any page has wrong size.
     func validatePageArray(_ pages: [Data]) throws {
-        let configuration = try self.configuration
-        for page in pages {
-            guard page.count == configuration.pageSizeInt else {
-                throw InvalidCall.dataBufferIsNotTheExpectedSize
-            }
+        let size = try configuration.pageSizeInt
+        guard pages.allSatisfy({ $0.count == size }) else {
+            throw InvalidCall.dataBufferIsNotTheExpectedSize
         }
     }
 

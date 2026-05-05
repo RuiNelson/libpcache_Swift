@@ -4,6 +4,8 @@
 //  MIT 2-Claude License.
 //
 
+import Foundation
+
 // MARK: - C
 
 public extension PersistentCache {
@@ -67,6 +69,7 @@ public extension PersistentCache {
         durable: Bool = true,
     ) throws {
         let count = try validateMatchingCounts(ids: ids, pages: data)
+        guard count > 0 else { return }
         try b_putPages(
             handle: handle,
             count: count,
@@ -99,15 +102,13 @@ public extension PersistentCache {
     ) throws {
         try validateCounter(counter)
         let count = try itemCount(fromPages: data)
+        guard count > 0 else { return }
 
         try counter.template.withUnsafeBytes { counterBuf in
-            guard let base = counterBuf.baseAddress else {
-                throw InvalidCall.idBufferIsNotTheExpectedSize
-            }
             try b_putPagesWithCounter(
                 handle: handle,
                 count: count,
-                idBase: base,
+                idBase: counterBuf.cBuffer.pointer,
                 start: counter.initialValue,
                 position: counter.position,
                 endianness: counter.endianness,
@@ -139,16 +140,10 @@ public extension PersistentCache {
         durable: Bool = true,
     ) throws {
         try id.withUnsafeBytes { idBuf in
-            guard let idBase = idBuf.baseAddress else {
-                throw InvalidCall.idBufferIsNotTheExpectedSize
-            }
             try data.withUnsafeBytes { dataBuf in
-                guard let dataBase = dataBuf.baseAddress else {
-                    throw InvalidCall.dataBufferIsNotTheExpectedSize
-                }
                 try putPage(
-                    id: (idBase, idBuf.count),
-                    data: (dataBase, dataBuf.count),
+                    id: idBuf.cBuffer,
+                    data: dataBuf.cBuffer,
                     failIfExists: failIfExists,
                     durable: durable,
                 )
@@ -173,16 +168,10 @@ public extension PersistentCache {
         durable: Bool = true,
     ) throws {
         try ids.withUnsafeBytes { idsBuf in
-            guard let idsBase = idsBuf.baseAddress else {
-                throw InvalidCall.idBufferIsNotTheExpectedSize
-            }
             try data.withUnsafeBytes { dataBuf in
-                guard let dataBase = dataBuf.baseAddress else {
-                    throw InvalidCall.dataBufferIsNotTheExpectedSize
-                }
                 try putPages(
-                    ids: (idsBase, idsBuf.count),
-                    data: (dataBase, dataBuf.count),
+                    ids: idsBuf.cBuffer,
+                    data: dataBuf.cBuffer,
                     failIfExists: failIfExists,
                     durable: durable,
                 )
@@ -202,12 +191,9 @@ public extension PersistentCache {
     ///   ``CommonErrors``, ``POSIXError``, ``SQLiteError``, or ``UnknownLibPCacheError`` from the underlying operation.
     func putPages(counter: Counter, data: RawSpan, failIfExists: Bool = false, durable: Bool = true) throws {
         try data.withUnsafeBytes { dataBuf in
-            guard let dataBase = dataBuf.baseAddress else {
-                throw InvalidCall.dataBufferIsNotTheExpectedSize
-            }
             try putPages(
                 counter: counter,
-                data: (dataBase, dataBuf.count),
+                data: dataBuf.cBuffer,
                 failIfExists: failIfExists,
                 durable: durable,
             )
@@ -216,8 +202,6 @@ public extension PersistentCache {
 }
 
 // MARK: - Foundation
-
-import Foundation
 
 public extension PersistentCache {
     /// Stores a single page identified by `id`.
@@ -237,16 +221,10 @@ public extension PersistentCache {
         durable: Bool = true,
     ) throws {
         try id.withUnsafeBytes { idBuf in
-            guard let idBase = idBuf.baseAddress else {
-                throw InvalidCall.idBufferIsNotTheExpectedSize
-            }
             try data.withUnsafeBytes { dataBuf in
-                guard let dataBase = dataBuf.baseAddress else {
-                    throw InvalidCall.dataBufferIsNotTheExpectedSize
-                }
                 try putPage(
-                    id: (idBase, idBuf.count),
-                    data: (dataBase, dataBuf.count),
+                    id: idBuf.cBuffer,
+                    data: dataBuf.cBuffer,
                     failIfExists: failIfExists,
                     durable: durable,
                 )
@@ -271,16 +249,10 @@ public extension PersistentCache {
         durable: Bool = true,
     ) throws {
         try ids.withUnsafeBytes { idsBuf in
-            guard let idsBase = idsBuf.baseAddress else {
-                throw InvalidCall.idBufferIsNotTheExpectedSize
-            }
             try data.withUnsafeBytes { dataBuf in
-                guard let dataBase = dataBuf.baseAddress else {
-                    throw InvalidCall.dataBufferIsNotTheExpectedSize
-                }
                 try putPages(
-                    ids: (idsBase, idsBuf.count),
-                    data: (dataBase, dataBuf.count),
+                    ids: idsBuf.cBuffer,
+                    data: dataBuf.cBuffer,
                     failIfExists: failIfExists,
                     durable: durable,
                 )
@@ -305,12 +277,9 @@ public extension PersistentCache {
         durable: Bool = true,
     ) throws {
         try data.withUnsafeBytes { dataBuf in
-            guard let dataBase = dataBuf.baseAddress else {
-                throw InvalidCall.dataBufferIsNotTheExpectedSize
-            }
             try putPages(
                 counter: counter,
-                data: (dataBase, dataBuf.count),
+                data: dataBuf.cBuffer,
                 failIfExists: failIfExists,
                 durable: durable,
             )
@@ -321,17 +290,18 @@ public extension PersistentCache {
 // MARK: - Foundation (Arrays)
 
 extension [Data] {
+    /// Concatenates the array's contents into a single contiguous `Data`.
+    ///
+    /// Returns an empty `Data` when the receiver is empty or all elements are empty.
     func squashed() -> Data {
-        let totalSize = self.reduce(0) { $0 + $1.count }
-
-        guard totalSize > 0 else {
-            return Data()
-        }
+        let totalSize = reduce(0) { $0 + $1.count }
+        guard totalSize > 0 else { return Data() }
 
         var result = Data(count: totalSize)
         result.withUnsafeMutableBytes { buffer in
-            var offset = 0
+            // totalSize > 0 implies a non-nil baseAddress.
             let base = buffer.baseAddress!.assumingMemoryBound(to: UInt8.self)
+            var offset = 0
             for chunk in self {
                 chunk.copyBytes(to: base.advanced(by: offset), count: chunk.count)
                 offset += chunk.count
@@ -362,25 +332,12 @@ public extension PersistentCache {
         try validateIDArray(ids)
         try validatePageArray(data)
 
-        let idsSquashed = ids.squashed()
-        let dataSquashed = data.squashed()
-
-        try idsSquashed.withUnsafeBytes { idsBuf in
-            guard let idsBase = idsBuf.baseAddress else {
-                throw InvalidCall.idBufferIsNotTheExpectedSize
-            }
-            try dataSquashed.withUnsafeBytes { dataBuf in
-                guard let dataBase = dataBuf.baseAddress else {
-                    throw InvalidCall.dataBufferIsNotTheExpectedSize
-                }
-                try putPages(
-                    ids: (idsBase, idsBuf.count),
-                    data: (dataBase, dataBuf.count),
-                    failIfExists: failIfExists,
-                    durable: durable,
-                )
-            }
-        }
+        try putPages(
+            ids: ids.squashed(),
+            data: data.squashed(),
+            failIfExists: failIfExists,
+            durable: durable,
+        )
     }
 
     /// Stores multiple pages with identifiers computed from a ``Counter`` template.
@@ -399,19 +356,12 @@ public extension PersistentCache {
         try validateCounter(counter)
         try validatePageArray(data)
 
-        let dataSquashed = data.squashed()
-
-        try dataSquashed.withUnsafeBytes { dataBuf in
-            guard let dataBase = dataBuf.baseAddress else {
-                throw InvalidCall.dataBufferIsNotTheExpectedSize
-            }
-            try putPages(
-                counter: counter,
-                data: (dataBase, dataBuf.count),
-                failIfExists: failIfExists,
-                durable: durable,
-            )
-        }
+        try putPages(
+            counter: counter,
+            data: data.squashed(),
+            failIfExists: failIfExists,
+            durable: durable,
+        )
     }
 }
 
@@ -435,27 +385,11 @@ public extension PersistentCache {
     ) throws {
         guard !pages.isEmpty else { return }
 
-        try validateIDArray(pages.map(\.id))
-        try validatePageArray(pages.map(\.data))
-
-        let idsSquashed = pages.map(\.id).squashed()
-        let dataSquashed = pages.map(\.data).squashed()
-
-        try idsSquashed.withUnsafeBytes { idsBuf in
-            guard let idsBase = idsBuf.baseAddress else {
-                throw InvalidCall.idBufferIsNotTheExpectedSize
-            }
-            try dataSquashed.withUnsafeBytes { dataBuf in
-                guard let dataBase = dataBuf.baseAddress else {
-                    throw InvalidCall.dataBufferIsNotTheExpectedSize
-                }
-                try putPages(
-                    ids: (idsBase, idsBuf.count),
-                    data: (dataBase, dataBuf.count),
-                    failIfExists: failIfExists,
-                    durable: durable,
-                )
-            }
-        }
+        try putPages(
+            ids: pages.map(\.id),
+            data: pages.map(\.data),
+            failIfExists: failIfExists,
+            durable: durable,
+        )
     }
 }

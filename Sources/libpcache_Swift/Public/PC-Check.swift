@@ -4,6 +4,8 @@
 //  MIT 2-Claude License.
 //
 
+import Foundation
+
 // MARK: - C
 
 public extension PersistentCache {
@@ -40,6 +42,7 @@ public extension PersistentCache {
     ///   ``UnknownLibPCacheError`` for unrecognized C error codes.
     func checkPages(ids: CBuffer, results: UnsafeMutablePointer<Bool>) throws {
         let count = try itemCount(fromIDs: ids)
+        guard count > 0 else { return }
         try b_checkPages(handle: handle, count: count, ids: ids.pointer, results: results)
     }
 
@@ -61,14 +64,12 @@ public extension PersistentCache {
     func checkPages(counter: Counter, count: Int, results: UnsafeMutablePointer<Bool>) throws {
         guard count >= 0 else { throw InvalidCall.invalidArguments }
         try validateCounter(counter)
+        guard count > 0 else { return }
         try counter.template.withUnsafeBytes { counterBuf in
-            guard let base = counterBuf.baseAddress else {
-                throw InvalidCall.idBufferIsNotTheExpectedSize
-            }
             try b_checkPagesWithCounter(
                 handle: handle,
                 count: count,
-                idBase: base,
+                idBase: counterBuf.cBuffer.pointer,
                 start: counter.initialValue,
                 position: counter.position,
                 endianness: counter.endianness,
@@ -112,10 +113,7 @@ public extension PersistentCache {
     ///   ``CommonErrors``, ``SQLiteError``, or ``UnknownLibPCacheError`` from the underlying operation.
     func checkPage(id: RawSpan) throws -> Bool {
         try id.withUnsafeBytes { idBuf in
-            guard let base = idBuf.baseAddress else {
-                throw InvalidCall.idBufferIsNotTheExpectedSize
-            }
-            return try checkPage(id: (base, idBuf.count))
+            try checkPage(id: idBuf.cBuffer)
         }
     }
 
@@ -131,23 +129,19 @@ public extension PersistentCache {
     ///   ``CheckPagesError`` on check failure;
     ///   ``CommonErrors``, ``SQLiteError``, or ``UnknownLibPCacheError`` from the underlying operation.
     func checkPages(ids: RawSpan, into results: consuming MutableSpan<Bool>) throws {
-        let configuration = try self.configuration
-        guard ids.byteCount % configuration.idWidthInt == 0 else {
+        let cfg = try configuration
+        guard ids.byteCount.isMultiple(of: cfg.idWidthInt) else {
             throw InvalidCall.idBufferIsNotTheExpectedSize
         }
-        let count = ids.byteCount / configuration.idWidthInt
+        let count = ids.byteCount / cfg.idWidthInt
         guard results.count >= count else {
             throw InvalidCall.dataBufferIsNotTheExpectedSize
         }
+        guard count > 0 else { return }
         try ids.withUnsafeBytes { idsBuf in
-            guard let idsBase = idsBuf.baseAddress else {
-                throw InvalidCall.idBufferIsNotTheExpectedSize
-            }
             try results.withUnsafeMutableBufferPointer { resultsBuf in
-                guard let resultsBase = resultsBuf.baseAddress else {
-                    throw InvalidCall.dataBufferIsNotTheExpectedSize
-                }
-                try checkPages(ids: (idsBase, idsBuf.count), results: resultsBase)
+                // count > 0 implies a non-nil resultsBuf.baseAddress.
+                try checkPages(ids: idsBuf.cBuffer, results: resultsBuf.baseAddress!)
             }
         }
     }
@@ -163,6 +157,8 @@ public extension PersistentCache {
     ///   ``InvalidCall`` on invalid buffer size; ``CheckPagesError`` on check failure;
     ///   ``CommonErrors``, ``SQLiteError``, or ``UnknownLibPCacheError`` from the underlying operation.
     func checkPages(counter: Counter, count: Int) throws -> [Bool] {
+        guard count >= 0 else { throw InvalidCall.invalidArguments }
+        guard count > 0 else { return [] }
         var results = [Bool](repeating: false, count: count)
         try checkPages(counter: counter, count: count, results: &results)
         return results
@@ -179,25 +175,14 @@ public extension PersistentCache {
     ///   ``CommonErrors``, ``SQLiteError``, or ``UnknownLibPCacheError`` from the underlying operation.
     func checkPagesRange(first: RawSpan, last: RawSpan) throws -> Int {
         try first.withUnsafeBytes { firstBuf in
-            guard let firstBase = firstBuf.baseAddress else {
-                throw InvalidCall.idBufferIsNotTheExpectedSize
-            }
-            return try last.withUnsafeBytes { lastBuf in
-                guard let lastBase = lastBuf.baseAddress else {
-                    throw InvalidCall.idBufferIsNotTheExpectedSize
-                }
-                return try checkPagesRange(
-                    first: (firstBase, firstBuf.count),
-                    last: (lastBase, lastBuf.count),
-                )
+            try last.withUnsafeBytes { lastBuf in
+                try checkPagesRange(first: firstBuf.cBuffer, last: lastBuf.cBuffer)
             }
         }
     }
 }
 
 // MARK: - Foundation
-
-import Foundation
 
 public extension PersistentCache {
     /// Tests whether a page identified by `id` exists in the volume.
@@ -209,10 +194,7 @@ public extension PersistentCache {
     ///   ``CommonErrors``, ``SQLiteError``, or ``UnknownLibPCacheError`` from the underlying operation.
     func checkPage(id: some ContiguousBytes) throws -> Bool {
         try id.withUnsafeBytes { idBuf in
-            guard let base = idBuf.baseAddress else {
-                throw InvalidCall.idBufferIsNotTheExpectedSize
-            }
-            return try checkPage(id: (base, idBuf.count))
+            try checkPage(id: idBuf.cBuffer)
         }
     }
 
@@ -224,14 +206,15 @@ public extension PersistentCache {
     /// - Throws: ``InvalidCall`` on invalid buffer size; ``CheckPagesError`` on check failure;
     ///   ``CommonErrors``, ``SQLiteError``, or ``UnknownLibPCacheError`` from the underlying operation.
     func checkPages(ids: some ContiguousBytes) throws -> [Bool] {
-        let configuration = try self.configuration
+        let cfg = try configuration
         return try ids.withUnsafeBytes { idsBuf in
-            guard let idsBase = idsBuf.baseAddress else {
+            guard idsBuf.count.isMultiple(of: cfg.idWidthInt) else {
                 throw InvalidCall.idBufferIsNotTheExpectedSize
             }
-            let count = idsBuf.count / configuration.idWidthInt
+            let count = idsBuf.count / cfg.idWidthInt
+            guard count > 0 else { return [] }
             var results = [Bool](repeating: false, count: count)
-            try checkPages(ids: (idsBase, idsBuf.count), results: &results)
+            try checkPages(ids: idsBuf.cBuffer, results: &results)
             return results
         }
     }
@@ -247,17 +230,8 @@ public extension PersistentCache {
     ///   ``CommonErrors``, ``SQLiteError``, or ``UnknownLibPCacheError`` from the underlying operation.
     func checkPagesRange(first: some ContiguousBytes, last: some ContiguousBytes) throws -> Int {
         try first.withUnsafeBytes { firstBuf in
-            guard let firstBase = firstBuf.baseAddress else {
-                throw InvalidCall.idBufferIsNotTheExpectedSize
-            }
-            return try last.withUnsafeBytes { lastBuf in
-                guard let lastBase = lastBuf.baseAddress else {
-                    throw InvalidCall.idBufferIsNotTheExpectedSize
-                }
-                return try checkPagesRange(
-                    first: (firstBase, firstBuf.count),
-                    last: (lastBase, lastBuf.count),
-                )
+            try last.withUnsafeBytes { lastBuf in
+                try checkPagesRange(first: firstBuf.cBuffer, last: lastBuf.cBuffer)
             }
         }
     }
@@ -276,13 +250,9 @@ public extension PersistentCache {
     func checkPages(ids: [Data]) throws -> [Bool] {
         guard !ids.isEmpty else { return [] }
         try validateIDArray(ids)
-        let idsSquashed = ids.squashed()
-        return try idsSquashed.withUnsafeBytes { idsBuf in
-            guard let idsBase = idsBuf.baseAddress else {
-                throw InvalidCall.idBufferIsNotTheExpectedSize
-            }
+        return try ids.squashed().withUnsafeBytes { idsBuf in
             var results = [Bool](repeating: false, count: ids.count)
-            try checkPages(ids: (idsBase, idsBuf.count), results: &results)
+            try checkPages(ids: idsBuf.cBuffer, results: &results)
             return results
         }
     }

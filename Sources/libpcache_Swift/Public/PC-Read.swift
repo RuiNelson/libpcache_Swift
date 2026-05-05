@@ -4,6 +4,8 @@
 //  MIT 2-Claude License.
 //
 
+import Foundation
+
 // MARK: - C
 
 public extension PersistentCache {
@@ -43,6 +45,7 @@ public extension PersistentCache {
     ///   ``UnknownLibPCacheError`` for unrecognized C error codes.
     func getPages(ids: CBuffer, data: CMutableBuffer) throws {
         let count = try validateMatchingCounts(ids: ids, pages: data)
+        guard count > 0 else { return }
         try b_getPages(handle: handle, count: count, ids: ids.pointer, pageData: data.pointer)
     }
 
@@ -58,21 +61,16 @@ public extension PersistentCache {
     ///   ``CommonErrors/outOfMemory`` on allocation failure;
     ///   ``POSIXError`` on I/O failure; ``SQLiteError`` on database failure;
     ///   ``UnknownLibPCacheError`` for unrecognized C error codes.
-    func getPages(
-        counter: Counter,
-        data: CMutableBuffer,
-    ) throws {
+    func getPages(counter: Counter, data: CMutableBuffer) throws {
         try validateCounter(counter)
         let count = try itemCount(fromPages: data)
+        guard count > 0 else { return }
 
         try counter.template.withUnsafeBytes { counterBuf in
-            guard let base = counterBuf.baseAddress else {
-                throw InvalidCall.idBufferIsNotTheExpectedSize
-            }
             try b_getPagesWithCounter(
                 handle: handle,
                 count: count,
-                idBase: base,
+                idBase: counterBuf.cBuffer.pointer,
                 start: counter.initialValue,
                 position: counter.position,
                 endianness: counter.endianness,
@@ -109,21 +107,17 @@ public extension PersistentCache {
         idsOut: CMutableBuffer,
         pagesOut: CMutableBuffer,
     ) throws -> Int {
-        let configuration = try self.configuration
-        guard first.count == configuration.idWidthInt else {
+        try validateIDBuffer(first)
+        try validateIDBuffer(last)
+        let cfg = try configuration
+        guard idsOut.count.isMultiple(of: cfg.idWidthInt) else {
             throw InvalidCall.idBufferIsNotTheExpectedSize
         }
-        guard last.count == configuration.idWidthInt else {
-            throw InvalidCall.idBufferIsNotTheExpectedSize
-        }
-        guard idsOut.count % configuration.idWidthInt == 0 else {
-            throw InvalidCall.idBufferIsNotTheExpectedSize
-        }
-        guard pagesOut.count % configuration.pageSizeInt == 0 else {
+        guard pagesOut.count.isMultiple(of: cfg.pageSizeInt) else {
             throw InvalidCall.dataBufferIsNotTheExpectedSize
         }
-        let idCapacity = idsOut.count / configuration.idWidthInt
-        let pageCapacity = pagesOut.count / configuration.pageSizeInt
+        let idCapacity = idsOut.count / cfg.idWidthInt
+        let pageCapacity = pagesOut.count / cfg.pageSizeInt
         guard idCapacity == pageCapacity else {
             throw InvalidCall.numberOfItemsInIDBufferDoesNotMatchTheNumberOfItemsInDataBuffer
         }
@@ -152,21 +146,15 @@ public extension PersistentCache {
     ///   ``InvalidCall/idBufferIsNotTheExpectedSize`` on invalid id; ``GetPagesError`` on read failure;
     ///   ``CommonErrors``, ``POSIXError``, ``SQLiteError``, or ``UnknownLibPCacheError`` from the underlying operation.
     func getPage(id: RawSpan, into data: consuming MutableRawSpan) throws {
-        let configuration = try self.configuration
-        guard data.byteCount >= configuration.pageSizeInt else {
+        let pageSize = try configuration.pageSizeInt
+        guard data.byteCount >= pageSize else {
             throw InvalidCall.dataBufferIsNotTheExpectedSize
         }
         try id.withUnsafeBytes { idBuf in
-            guard let idBase = idBuf.baseAddress else {
-                throw InvalidCall.idBufferIsNotTheExpectedSize
-            }
             try data.withUnsafeMutableBytes { dataBuf in
-                guard let dataBase = dataBuf.baseAddress else {
-                    throw InvalidCall.dataBufferIsNotTheExpectedSize
-                }
                 try getPage(
-                    id: (idBase, idBuf.count),
-                    data: (dataBase, configuration.pageSizeInt),
+                    id: idBuf.cBuffer,
+                    data: (dataBuf.cMutableBuffer.pointer, pageSize),
                 )
             }
         }
@@ -184,26 +172,21 @@ public extension PersistentCache {
     ///   ``GetPagesError`` on read failure;
     ///   ``CommonErrors``, ``POSIXError``, ``SQLiteError``, or ``UnknownLibPCacheError`` from the underlying operation.
     func getPages(ids: RawSpan, into data: consuming MutableRawSpan) throws {
-        let configuration = try self.configuration
-        guard ids.byteCount % configuration.idWidthInt == 0 else {
+        let cfg = try configuration
+        guard ids.byteCount.isMultiple(of: cfg.idWidthInt) else {
             throw InvalidCall.idBufferIsNotTheExpectedSize
         }
-        let count = ids.byteCount / configuration.idWidthInt
-        let requiredBytes = count * configuration.pageSizeInt
+        let count = ids.byteCount / cfg.idWidthInt
+        let requiredBytes = count * cfg.pageSizeInt
         guard data.byteCount >= requiredBytes else {
             throw InvalidCall.dataBufferIsNotTheExpectedSize
         }
+        guard count > 0 else { return }
         try ids.withUnsafeBytes { idsBuf in
-            guard let idsBase = idsBuf.baseAddress else {
-                throw InvalidCall.idBufferIsNotTheExpectedSize
-            }
             try data.withUnsafeMutableBytes { dataBuf in
-                guard let dataBase = dataBuf.baseAddress else {
-                    throw InvalidCall.dataBufferIsNotTheExpectedSize
-                }
                 try getPages(
-                    ids: (idsBase, idsBuf.count),
-                    data: (dataBase, requiredBytes),
+                    ids: idsBuf.cBuffer,
+                    data: (dataBuf.cMutableBuffer.pointer, requiredBytes),
                 )
             }
         }
@@ -234,33 +217,15 @@ public extension PersistentCache {
         idsOut: consuming MutableRawSpan,
         pagesOut: consuming MutableRawSpan,
     ) throws -> Int {
-        let configuration = try self.configuration
-        guard idsOut.byteCount % configuration.idWidthInt == 0 else {
-            throw InvalidCall.idBufferIsNotTheExpectedSize
-        }
-        guard pagesOut.byteCount % configuration.pageSizeInt == 0 else {
-            throw InvalidCall.dataBufferIsNotTheExpectedSize
-        }
-        let idCapacity = idsOut.byteCount / configuration.idWidthInt
-        let pageCapacity = pagesOut.byteCount / configuration.pageSizeInt
-        guard idCapacity == pageCapacity else {
-            throw InvalidCall.numberOfItemsInIDBufferDoesNotMatchTheNumberOfItemsInDataBuffer
-        }
-        return try first.withUnsafeBytes { firstBuf in
+        try first.withUnsafeBytes { firstBuf in
             try last.withUnsafeBytes { lastBuf in
                 try idsOut.withUnsafeMutableBytes { idsBuf in
                     try pagesOut.withUnsafeMutableBytes { pagesBuf in
-                        guard let firstBase = firstBuf.baseAddress,
-                              let lastBase = lastBuf.baseAddress,
-                              let idsBase = idsBuf.baseAddress,
-                              let pagesBase = pagesBuf.baseAddress else {
-                            throw InvalidCall.idBufferIsNotTheExpectedSize
-                        }
-                        return try getPagesRange(
-                            first: (firstBase, firstBuf.count),
-                            last: (lastBase, lastBuf.count),
-                            idsOut: (idsBase, idsBuf.count),
-                            pagesOut: (pagesBase, pagesBuf.count),
+                        try getPagesRange(
+                            first: firstBuf.cBuffer,
+                            last: lastBuf.cBuffer,
+                            idsOut: idsBuf.cMutableBuffer,
+                            pagesOut: pagesBuf.cMutableBuffer,
                         )
                     }
                 }
@@ -271,8 +236,6 @@ public extension PersistentCache {
 
 // MARK: - Foundation
 
-import Foundation
-
 public extension PersistentCache {
     /// Retrieves the page identified by `id`.
     ///
@@ -282,20 +245,10 @@ public extension PersistentCache {
     /// - Throws: ``InvalidCall`` on invalid buffer size; ``GetPagesError`` on read failure;
     ///   ``CommonErrors``, ``POSIXError``, ``SQLiteError``, or ``UnknownLibPCacheError`` from the underlying operation.
     func getPage(id: some ContiguousBytes) throws -> Data {
-        let configuration = try self.configuration
-        var data = Data(count: configuration.pageSizeInt)
+        var data = try Data(count: configuration.pageSizeInt)
         try id.withUnsafeBytes { idBuf in
-            guard let idBase = idBuf.baseAddress else {
-                throw InvalidCall.idBufferIsNotTheExpectedSize
-            }
             try data.withUnsafeMutableBytes { dataBuf in
-                guard let dataBase = dataBuf.baseAddress else {
-                    throw InvalidCall.dataBufferIsNotTheExpectedSize
-                }
-                try getPage(
-                    id: (idBase, idBuf.count),
-                    data: (dataBase, dataBuf.count),
-                )
+                try getPage(id: idBuf.cBuffer, data: dataBuf.cMutableBuffer)
             }
         }
         return data
@@ -309,21 +262,16 @@ public extension PersistentCache {
     /// - Throws: ``InvalidCall`` on invalid buffer size; ``GetPagesError`` on read failure;
     ///   ``CommonErrors``, ``POSIXError``, ``SQLiteError``, or ``UnknownLibPCacheError`` from the underlying operation.
     func getPages(ids: some ContiguousBytes) throws -> Data {
-        let configuration = try self.configuration
+        let cfg = try configuration
         return try ids.withUnsafeBytes { idsBuf in
-            guard let idsBase = idsBuf.baseAddress else {
+            guard idsBuf.count.isMultiple(of: cfg.idWidthInt) else {
                 throw InvalidCall.idBufferIsNotTheExpectedSize
             }
-            let count = idsBuf.count / configuration.idWidthInt
-            var data = Data(count: count * configuration.pageSizeInt)
+            let count = idsBuf.count / cfg.idWidthInt
+            guard count > 0 else { return Data() }
+            var data = Data(count: count * cfg.pageSizeInt)
             try data.withUnsafeMutableBytes { dataBuf in
-                guard let dataBase = dataBuf.baseAddress else {
-                    throw InvalidCall.dataBufferIsNotTheExpectedSize
-                }
-                try getPages(
-                    ids: (idsBase, idsBuf.count),
-                    data: (dataBase, dataBuf.count),
-                )
+                try getPages(ids: idsBuf.cBuffer, data: dataBuf.cMutableBuffer)
             }
             return data
         }
@@ -341,16 +289,10 @@ public extension PersistentCache {
     ///   ``CommonErrors``, ``POSIXError``, ``SQLiteError``, or ``UnknownLibPCacheError`` from the underlying operation.
     func getPages(counter: Counter, count: Int) throws -> Data {
         guard count >= 0 else { throw InvalidCall.invalidArguments }
-        let configuration = try self.configuration
-        var data = Data(count: count * configuration.pageSizeInt)
+        guard count > 0 else { return Data() }
+        var data = try Data(count: count * configuration.pageSizeInt)
         try data.withUnsafeMutableBytes { dataBuf in
-            guard let dataBase = dataBuf.baseAddress else {
-                throw InvalidCall.dataBufferIsNotTheExpectedSize
-            }
-            try getPages(
-                counter: counter,
-                data: (dataBase, dataBuf.count),
-            )
+            try getPages(counter: counter, data: dataBuf.cMutableBuffer)
         }
         return data
     }
@@ -368,34 +310,15 @@ public extension PersistentCache {
         let bufferCapacity = try checkPagesRange(first: first, last: last)
         guard bufferCapacity > 0 else { return (Data(), Data()) }
 
-        let configuration = try self.configuration
-        var idsOut = Data(count: bufferCapacity * configuration.idWidthInt)
-        var pagesOut = Data(count: bufferCapacity * configuration.pageSizeInt)
-        var actualCount = 0
+        let cfg = try configuration
+        var idsOut = Data(count: bufferCapacity * cfg.idWidthInt)
+        var pagesOut = Data(count: bufferCapacity * cfg.pageSizeInt)
+        let actualCount = try rawGetPagesRange(first: first, last: last, idsOut: &idsOut, pagesOut: &pagesOut)
 
-        try first.withUnsafeBytes { firstBuf in
-            try last.withUnsafeBytes { lastBuf in
-                try idsOut.withUnsafeMutableBytes { idsBuf in
-                    try pagesOut.withUnsafeMutableBytes { pagesBuf in
-                        guard let firstBase = firstBuf.baseAddress,
-                              let lastBase = lastBuf.baseAddress,
-                              let idsBase = idsBuf.baseAddress,
-                              let pagesBase = pagesBuf.baseAddress else { throw InvalidCall.idBufferIsNotTheExpectedSize }
-                        actualCount = try getPagesRange(
-                            first: (firstBase, firstBuf.count),
-                            last: (lastBase, lastBuf.count),
-                            idsOut: (idsBase, idsBuf.count),
-                            pagesOut: (pagesBase, pagesBuf.count),
-                        )
-                    }
-                }
-            }
-        }
-
-        return (
-            idsOut.prefix(actualCount * configuration.idWidthInt),
-            pagesOut.prefix(actualCount * configuration.pageSizeInt),
-        )
+        // Trim to the actual returned size; the C call may return fewer pages than the cap reported by checkPagesRange.
+        idsOut.removeSubrange(actualCount * cfg.idWidthInt ..< idsOut.count)
+        pagesOut.removeSubrange(actualCount * cfg.pageSizeInt ..< pagesOut.count)
+        return (idsOut, pagesOut)
     }
 
     /// Retrieves all pages whose identifier falls within the closed interval `[first, last]`.
@@ -411,41 +334,45 @@ public extension PersistentCache {
         let bufferCapacity = try checkPagesRange(first: first, last: last)
         guard bufferCapacity > 0 else { return [] }
 
-        let configuration = try self.configuration
-        var idsOut = Data(count: bufferCapacity * configuration.idWidthInt)
-        var pagesOut = Data(count: bufferCapacity * configuration.pageSizeInt)
-        var actualCount = 0
+        let cfg = try configuration
+        var idsOut = Data(count: bufferCapacity * cfg.idWidthInt)
+        var pagesOut = Data(count: bufferCapacity * cfg.pageSizeInt)
+        let actualCount = try rawGetPagesRange(first: first, last: last, idsOut: &idsOut, pagesOut: &pagesOut)
 
+        var result = [(id: Data, page: Data)]()
+        result.reserveCapacity(actualCount)
+        for i in 0 ..< actualCount {
+            let idStart = i * cfg.idWidthInt
+            let pageStart = i * cfg.pageSizeInt
+            result.append((
+                id: idsOut[idStart ..< idStart + cfg.idWidthInt],
+                page: pagesOut[pageStart ..< pageStart + cfg.pageSizeInt],
+            ))
+        }
+        return result
+    }
+
+    /// Shared implementation behind the two ``getPagesRange(first:last:)`` Foundation overloads.
+    private func rawGetPagesRange(
+        first: some ContiguousBytes,
+        last: some ContiguousBytes,
+        idsOut: inout Data,
+        pagesOut: inout Data,
+    ) throws -> Int {
         try first.withUnsafeBytes { firstBuf in
             try last.withUnsafeBytes { lastBuf in
                 try idsOut.withUnsafeMutableBytes { idsBuf in
                     try pagesOut.withUnsafeMutableBytes { pagesBuf in
-                        guard let firstBase = firstBuf.baseAddress,
-                              let lastBase = lastBuf.baseAddress,
-                              let idsBase = idsBuf.baseAddress,
-                              let pagesBase = pagesBuf.baseAddress else { throw InvalidCall.idBufferIsNotTheExpectedSize }
-                        actualCount = try getPagesRange(
-                            first: (firstBase, firstBuf.count),
-                            last: (lastBase, lastBuf.count),
-                            idsOut: (idsBase, idsBuf.count),
-                            pagesOut: (pagesBase, pagesBuf.count),
+                        try getPagesRange(
+                            first: firstBuf.cBuffer,
+                            last: lastBuf.cBuffer,
+                            idsOut: idsBuf.cMutableBuffer,
+                            pagesOut: pagesBuf.cMutableBuffer,
                         )
                     }
                 }
             }
         }
-
-        var result = [(id: Data, page: Data)]()
-        result.reserveCapacity(actualCount)
-        for i in 0 ..< actualCount {
-            let idStart = i * configuration.idWidthInt
-            let pageStart = i * configuration.pageSizeInt
-            result.append((
-                id: idsOut[idStart ..< idStart + configuration.idWidthInt],
-                page: pagesOut[pageStart ..< pageStart + configuration.pageSizeInt],
-            ))
-        }
-        return result
     }
 }
 
@@ -462,24 +389,15 @@ public extension PersistentCache {
     func getPages(ids: [Data]) throws -> Data {
         guard !ids.isEmpty else { return Data() }
         try validateIDArray(ids)
-        let configuration = try self.configuration
+        let cfg = try configuration
         let idsSquashed = ids.squashed()
-        return try idsSquashed.withUnsafeBytes { idsBuf in
-            guard let idsBase = idsBuf.baseAddress else {
-                throw InvalidCall.idBufferIsNotTheExpectedSize
-            }
-            var data = Data(count: ids.count * configuration.pageSizeInt)
+        var data = Data(count: ids.count * cfg.pageSizeInt)
+        try idsSquashed.withUnsafeBytes { idsBuf in
             try data.withUnsafeMutableBytes { dataBuf in
-                guard let dataBase = dataBuf.baseAddress else {
-                    throw InvalidCall.dataBufferIsNotTheExpectedSize
-                }
-                try getPages(
-                    ids: (idsBase, idsBuf.count),
-                    data: (dataBase, dataBuf.count),
-                )
+                try getPages(ids: idsBuf.cBuffer, data: dataBuf.cMutableBuffer)
             }
-            return data
         }
+        return data
     }
 
     /// Retrieves multiple pages from an array of identifiers.
@@ -491,11 +409,11 @@ public extension PersistentCache {
     ///   ``CommonErrors``, ``POSIXError``, ``SQLiteError``, or ``UnknownLibPCacheError`` from the underlying operation.
     func getPages(ids: [Data]) throws -> [Data] {
         guard !ids.isEmpty else { return [] }
-        let configuration = try self.configuration
+        let pageSize = try configuration.pageSizeInt
         let dataSquashed: Data = try getPages(ids: ids)
         return (0 ..< ids.count).map { i in
-            let start = i * configuration.pageSizeInt
-            return dataSquashed[start ..< start + configuration.pageSizeInt]
+            let start = i * pageSize
+            return dataSquashed[start ..< start + pageSize]
         }
     }
 }

@@ -128,7 +128,7 @@ public struct Configuration: Sendable {
 }
 
 /// Page occupancy counts for an open ``PersistentCache`` volume.
-public struct PageCount {
+public struct PageCount: Sendable {
     /// Number of pages currently stored.
     public var used: Int
     /// Number of available slots (`max_pages - used`).
@@ -227,25 +227,32 @@ public struct Counter: Sendable {
     /// Advances the counter by a given amount.
     ///
     /// A negative `by` is equivalent to calling ``backwards(_:)`` with its absolute value.
+    ///
+    /// - Precondition: The resulting value must be representable as `UInt32`
+    ///   (i.e. in the closed interval `[0, UInt32.max]`).
     public mutating func advance(_ by: Int) {
-        if by < 0 {
-            initialValue = initialValue - UInt32(-by)
-        }
-        else {
-            initialValue = initialValue + UInt32(by)
-        }
+        let (sum, overflow) = Int(initialValue).addingReportingOverflow(by)
+        initialValue = Counter.checkedUInt32(sum, overflow: overflow, op: "advance")
     }
 
     /// Moves the counter backwards by a given amount.
     ///
     /// A negative `by` is equivalent to calling ``advance(_:)`` with its absolute value.
+    ///
+    /// - Precondition: The resulting value must be representable as `UInt32`
+    ///   (i.e. in the closed interval `[0, UInt32.max]`).
     public mutating func backwards(_ by: Int) {
-        if by < 0 {
-            initialValue = initialValue + UInt32(-by)
-        }
-        else {
-            initialValue = initialValue - UInt32(by)
-        }
+        let (diff, overflow) = Int(initialValue).subtractingReportingOverflow(by)
+        initialValue = Counter.checkedUInt32(diff, overflow: overflow, op: "backwards")
+    }
+
+    /// Range-checks `value` against the `UInt32` interval and converts it.
+    private static func checkedUInt32(_ value: Int, overflow: Bool, op: String) -> UInt32 {
+        precondition(
+            !overflow && value >= 0 && value <= Int(UInt32.max),
+            "Counter \(op) produced out-of-range value: \(value).",
+        )
+        return UInt32(value)
     }
 
     /// Width of the template in bytes.

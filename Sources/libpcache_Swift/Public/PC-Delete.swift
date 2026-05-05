@@ -4,6 +4,8 @@
 //  MIT 2-Claude License.
 //
 
+import Foundation
+
 // MARK: - C
 
 public extension PersistentCache {
@@ -58,6 +60,7 @@ public extension PersistentCache {
         durable: Bool = true,
     ) throws {
         let count = try itemCount(fromIDs: ids)
+        guard count > 0 else { return }
         try b_deletePages(
             handle: handle,
             count: count,
@@ -91,14 +94,12 @@ public extension PersistentCache {
     ) throws {
         guard count >= 0 else { throw InvalidCall.invalidArguments }
         try validateCounter(counter)
+        guard count > 0 else { return }
         try counter.template.withUnsafeBytes { counterBuf in
-            guard let base = counterBuf.baseAddress else {
-                throw InvalidCall.idBufferIsNotTheExpectedSize
-            }
             try b_deletePagesWithCounter(
                 handle: handle,
                 count: count,
-                idBase: base,
+                idBase: counterBuf.cBuffer.pointer,
                 start: counter.initialValue,
                 position: counter.position,
                 endianness: counter.endianness,
@@ -160,10 +161,7 @@ public extension PersistentCache {
         durable: Bool = true,
     ) throws {
         try id.withUnsafeBytes { idBuf in
-            guard let base = idBuf.baseAddress else {
-                throw InvalidCall.idBufferIsNotTheExpectedSize
-            }
-            try deletePage(id: (base, idBuf.count), wipe: wipe, durable: durable)
+            try deletePage(id: idBuf.cBuffer, wipe: wipe, durable: durable)
         }
     }
 
@@ -182,10 +180,7 @@ public extension PersistentCache {
         durable: Bool = true,
     ) throws {
         try ids.withUnsafeBytes { idsBuf in
-            guard let idsBase = idsBuf.baseAddress else {
-                throw InvalidCall.idBufferIsNotTheExpectedSize
-            }
-            try deletePages(ids: (idsBase, idsBuf.count), wipe: wipe, durable: durable)
+            try deletePages(ids: idsBuf.cBuffer, wipe: wipe, durable: durable)
         }
     }
 
@@ -206,16 +201,10 @@ public extension PersistentCache {
         durable: Bool = true,
     ) throws {
         try first.withUnsafeBytes { firstBuf in
-            guard let firstBase = firstBuf.baseAddress else {
-                throw InvalidCall.idBufferIsNotTheExpectedSize
-            }
             try last.withUnsafeBytes { lastBuf in
-                guard let lastBase = lastBuf.baseAddress else {
-                    throw InvalidCall.idBufferIsNotTheExpectedSize
-                }
                 try deletePagesRange(
-                    first: (firstBase, firstBuf.count),
-                    last: (lastBase, lastBuf.count),
+                    first: firstBuf.cBuffer,
+                    last: lastBuf.cBuffer,
                     wipe: wipe,
                     durable: durable,
                 )
@@ -225,8 +214,6 @@ public extension PersistentCache {
 }
 
 // MARK: - Foundation
-
-import Foundation
 
 public extension PersistentCache {
     /// Deletes the page identified by `id` from the volume.
@@ -244,10 +231,7 @@ public extension PersistentCache {
         durable: Bool = true,
     ) throws {
         try id.withUnsafeBytes { idBuf in
-            guard let base = idBuf.baseAddress else {
-                throw InvalidCall.idBufferIsNotTheExpectedSize
-            }
-            try deletePage(id: (base, idBuf.count), wipe: wipe, durable: durable)
+            try deletePage(id: idBuf.cBuffer, wipe: wipe, durable: durable)
         }
     }
 
@@ -266,10 +250,7 @@ public extension PersistentCache {
         durable: Bool = true,
     ) throws {
         try ids.withUnsafeBytes { idsBuf in
-            guard let idsBase = idsBuf.baseAddress else {
-                throw InvalidCall.idBufferIsNotTheExpectedSize
-            }
-            try deletePages(ids: (idsBase, idsBuf.count), wipe: wipe, durable: durable)
+            try deletePages(ids: idsBuf.cBuffer, wipe: wipe, durable: durable)
         }
     }
 
@@ -290,16 +271,10 @@ public extension PersistentCache {
         durable: Bool = true,
     ) throws {
         try first.withUnsafeBytes { firstBuf in
-            guard let firstBase = firstBuf.baseAddress else {
-                throw InvalidCall.idBufferIsNotTheExpectedSize
-            }
             try last.withUnsafeBytes { lastBuf in
-                guard let lastBase = lastBuf.baseAddress else {
-                    throw InvalidCall.idBufferIsNotTheExpectedSize
-                }
                 try deletePagesRange(
-                    first: (firstBase, firstBuf.count),
-                    last: (lastBase, lastBuf.count),
+                    first: firstBuf.cBuffer,
+                    last: lastBuf.cBuffer,
                     wipe: wipe,
                     durable: durable,
                 )
@@ -327,12 +302,6 @@ public extension PersistentCache {
     ) throws {
         guard !ids.isEmpty else { return }
         try validateIDArray(ids)
-        let idsSquashed = ids.squashed()
-        try idsSquashed.withUnsafeBytes { idsBuf in
-            guard let idsBase = idsBuf.baseAddress else {
-                throw InvalidCall.idBufferIsNotTheExpectedSize
-            }
-            try deletePages(ids: (idsBase, idsBuf.count), wipe: wipe, durable: durable)
-        }
+        try deletePages(ids: ids.squashed(), wipe: wipe, durable: durable)
     }
 }

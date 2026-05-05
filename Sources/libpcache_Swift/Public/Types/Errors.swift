@@ -62,7 +62,7 @@ public enum PutPagesError: Error {
     case capacityExceeded
     /// A page with the same identifier already exists and `failIfExists` was `true`.
     case duplicateID
-    /// `position` is out of bounds, the counter would overflow, or `endianess` is invalid.
+    /// `position` is out of bounds, the counter would overflow, or `endianness` is invalid.
     case invalidArgument
 }
 
@@ -74,7 +74,7 @@ public enum PutPagesError: Error {
 public enum GetPagesError: Error {
     /// No page with the given identifier exists in the volume.
     case notFound
-    /// `position` is out of bounds, the counter would overflow, or `endianess` is invalid.
+    /// `position` is out of bounds, the counter would overflow, or `endianness` is invalid.
     case invalidArgument
     /// `first` is greater than `last`.
     case rangeInvalidRange
@@ -88,7 +88,7 @@ public enum GetPagesError: Error {
 /// ``PersistentCache/checkPages(ids:)``, ``PersistentCache/checkPages(counter:count:)``,
 /// and ``PersistentCache/checkPagesRange(first:last:)``.
 public enum CheckPagesError: Error {
-    /// `position` is out of bounds, the counter would overflow, or `endianess` is invalid.
+    /// `position` is out of bounds, the counter would overflow, or `endianness` is invalid.
     case invalidArgument
     /// `first` is greater than `last`.
     case rangeInvalidRange
@@ -103,7 +103,7 @@ public enum CheckPagesError: Error {
 public enum DeletePagesError: Error {
     /// `first` is greater than `last`.
     case invalidRange
-    /// `position` is out of bounds, the counter would overflow, or `endianess` is invalid.
+    /// `position` is out of bounds, the counter would overflow, or `endianness` is invalid.
     case invalidArgument
 }
 

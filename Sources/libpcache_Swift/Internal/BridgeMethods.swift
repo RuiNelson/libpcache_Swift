@@ -36,6 +36,22 @@ typealias Handle = pcache_handle
 
 // MARK: - Lifecycle
 
+/// Invokes `body` with C string pointers to the database and data file paths.
+///
+/// Uses ``URL/withUnsafeFileSystemRepresentation(_:)`` so paths are encoded in the
+/// platform's native filesystem representation and survive Unicode and percent-encoding edge cases.
+private func withFilePairCStrings<R>(
+    _ paths: FilePair,
+    _ body: (UnsafePointer<CChar>, UnsafePointer<CChar>) -> R,
+) -> R? {
+    paths.databaseURL.withUnsafeFileSystemRepresentation { dbPath in
+        paths.dataURL.withUnsafeFileSystemRepresentation { dataPath in
+            guard let dbPath, let dataPath else { return nil }
+            return body(dbPath, dataPath)
+        }
+    }
+}
+
 /// Creates a new volume on the filesystem.
 ///
 /// - Throws: ``CreateVolumeError`` if the volume cannot be created;
@@ -51,12 +67,11 @@ func b_create(
     var sqliteErr: Int32 = .init()
     var posixErr: Int32 = .init()
     var cConfig = config.cValue
-    paths.databaseURL.path.withCString { dbPath in
-        paths.dataURL.path.withCString { dataPath in
-            var pair = pcache_file_pair(database_path: dbPath, data_path: dataPath)
-            pcache_create(&pair, &cConfig, preallocateDatabase, preallocateDatafile, &err, &sqliteErr, &posixErr)
-        }
+    let invoked: Void? = withFilePairCStrings(paths) { dbPath, dataPath in
+        var pair = pcache_file_pair(database_path: dbPath, data_path: dataPath)
+        pcache_create(&pair, &cConfig, preallocateDatabase, preallocateDatafile, &err, &sqliteErr, &posixErr)
     }
+    guard invoked != nil else { throw CreateVolumeError.invalidArgument }
     try bridgeCreateError(err, sqlite: sqliteErr, posix: posixErr)
 }
 
@@ -72,12 +87,11 @@ func b_open(paths: FilePair) throws -> Handle {
     var err: pcache_open_error = PCACHE_OPEN_OK
     var sqliteErr: Int32 = .init()
     var posixErr: Int32 = .init()
-    let h = paths.databaseURL.path.withCString { dbPath in
-        paths.dataURL.path.withCString { dataPath in
-            var pair = pcache_file_pair(database_path: dbPath, data_path: dataPath)
-            return pcache_open(&pair, &err, &sqliteErr, &posixErr)
-        }
+    let h: Handle? = withFilePairCStrings(paths) { dbPath, dataPath in
+        var pair = pcache_file_pair(database_path: dbPath, data_path: dataPath)
+        return pcache_open(&pair, &err, &sqliteErr, &posixErr)
     }
+    guard let h else { throw OpenVolumeError.notFound }
     if h == 0 {
         try bridgeOpenError(err, sqlite: sqliteErr, posix: posixErr)
     }

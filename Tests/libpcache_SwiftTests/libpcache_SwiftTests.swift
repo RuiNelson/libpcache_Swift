@@ -534,6 +534,29 @@ struct MaintenanceTests {
         }
     }
 
+    @Test func `configuration reflects setNewMaxPages`() throws {
+        try withCache(maxPages: 5) { cache in
+            let before = try cache.configuration
+            #expect(before.maxPages == 5)
+
+            try cache.setNewMaxPages(8)
+
+            let after = try cache.configuration
+            #expect(after.maxPages == 8)
+            #expect(after.maxPages != before.maxPages)
+
+            // Other fields must remain stable.
+            #expect(after.pageSize == before.pageSize)
+            #expect(after.idWidth == before.idWidth)
+            #expect(after.capacityPolicy == before.capacityPolicy)
+
+            // Page-count snapshot should reflect the new capacity (used == 0, free == 8).
+            let counts = try cache.pageCounts()
+            #expect(counts.used == 0)
+            #expect(counts.free == 8)
+        }
+    }
+
     @Test func `set new max pages would discard`() throws {
         try withCache(maxPages: 5) { cache in
             try cache.putPage(id: makeID(0x01, width: 16), data: makePage(0xAA, size: 4096))
