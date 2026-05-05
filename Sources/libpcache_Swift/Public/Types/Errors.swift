@@ -9,7 +9,7 @@ import Foundation
 // MARK: Common Errors
 
 /// Errors common to multiple operations on a ``PersistentCache`` volume.
-public enum CommonErrors: Error {
+public enum CommonErrors: Error, Equatable {
     /// The volume handle is zero or does not refer to an open volume.
     case invalidHandle
     /// Memory allocation failed.
@@ -19,7 +19,7 @@ public enum CommonErrors: Error {
 /// Error raised when a SQLite operation fails.
 ///
 /// Inspect ``code`` for the specific SQLite error code.
-public struct SQLiteError: Error {
+public struct SQLiteError: Error, Equatable {
     /// The SQLite error code.
     public let code: Int32
 
@@ -35,7 +35,7 @@ public struct SQLiteError: Error {
 // MARK: Operation-Specific Errors
 
 /// Errors returned by ``PersistentCache/create(files:configuration:options:)``.
-public enum CreateVolumeError: Error {
+public enum CreateVolumeError: Error, Equatable {
     /// A required pointer was NULL or a numeric parameter was zero.
     case invalidArgument
     /// At least one of the two volume files already exists.
@@ -43,7 +43,7 @@ public enum CreateVolumeError: Error {
 }
 
 /// Errors returned by ``PersistentCache/init(files:)``.
-public enum OpenVolumeError: Error {
+public enum OpenVolumeError: Error, Equatable {
     /// At least one of the two volume files does not exist.
     case notFound
     /// The index database is missing required metadata.
@@ -57,7 +57,7 @@ public enum OpenVolumeError: Error {
 /// Write operations include ``PersistentCache/putPage(id:data:failIfExists:durable:)``,
 /// ``PersistentCache/putPages(ids:data:failIfExists:durable:)``, and
 /// ``PersistentCache/putPages(counter:data:failIfExists:durable:)``.
-public enum PutPagesError: Error {
+public enum PutPagesError: Error, Equatable {
     /// FIXED volume is full and has no free slots.
     case capacityExceeded
     /// A page with the same identifier already exists and `failIfExists` was `true`.
@@ -71,7 +71,7 @@ public enum PutPagesError: Error {
 /// Read operations include ``PersistentCache/getPage(id:data:)``,
 /// ``PersistentCache/getPages(ids:data:)``, ``PersistentCache/getPages(counter:data:)``,
 /// and ``PersistentCache/getPagesRange(first:last:idsOut:pagesOut:)``.
-public enum GetPagesError: Error {
+public enum GetPagesError: Error, Equatable {
     /// No page with the given identifier exists in the volume.
     case notFound
     /// `position` is out of bounds, the counter would overflow, or `endianness` is invalid.
@@ -87,7 +87,7 @@ public enum GetPagesError: Error {
 /// Check operations include ``PersistentCache/checkPage(id:)``,
 /// ``PersistentCache/checkPages(ids:)``, ``PersistentCache/checkPages(counter:count:)``,
 /// and ``PersistentCache/checkPagesRange(first:last:)``.
-public enum CheckPagesError: Error {
+public enum CheckPagesError: Error, Equatable{
     /// `position` is out of bounds, the counter would overflow, or `endianness` is invalid.
     case invalidArgument
     /// `first` is greater than `last`.
@@ -100,7 +100,7 @@ public enum CheckPagesError: Error {
 /// ``PersistentCache/deletePages(ids:wipeDataFile:durable:)``,
 /// ``PersistentCache/deletePages(counter:count:wipeDataFile:durable:)``,
 /// and ``PersistentCache/deletePagesRange(first:last:wipeDataFile:durable:)``.
-public enum DeletePagesError: Error {
+public enum DeletePagesError: Error, Equatable {
     /// `first` is greater than `last`.
     case invalidRange
     /// `position` is out of bounds, the counter would overflow, or `endianness` is invalid.
@@ -108,13 +108,13 @@ public enum DeletePagesError: Error {
 }
 
 /// Errors returned by ``PersistentCache/defragment(shrinkFile:durable:progress:)``.
-public enum DefragmentVolumeError: Error {
+public enum DefragmentVolumeError: Error, Equatable {
     /// The progress callback returned `false`; the volume remains consistent.
     case cancelled
 }
 
 /// Errors returned by ``PersistentCache/setNewMaxPages(_:durable:)``.
-public enum VolumeSetMaxPagesError: Error {
+public enum VolumeSetMaxPagesError: Error, Equatable {
     /// FIXED volume: total live pages exceed `newMaxPages`.
     case wouldDiscardPages
 }
@@ -124,7 +124,7 @@ public enum VolumeSetMaxPagesError: Error {
 /// Inspect ``libpcacheCode`` for the raw error code,
 /// ``sqlite3`` for the SQLite error code if available,
 /// and ``posix`` for the POSIX error code if available.
-public struct UnknownLibPCacheError: Error {
+public struct UnknownLibPCacheError: Error, Equatable {
     /// The raw libpcache error code.
     public let libpcacheCode: UInt32
     /// The SQLite error code, if available.
@@ -149,7 +149,7 @@ public struct UnknownLibPCacheError: Error {
 /// Errors caused by incorrect API usage (programming errors).
 ///
 /// These errors indicate bugs in the calling code, not failures in the underlying library.
-enum InvalidCall: Error {
+enum InvalidCall: Error, Equatable {
     case invalidArguments
     case idBufferIsNotTheExpectedSize
     case dataBufferIsNotTheExpectedSize

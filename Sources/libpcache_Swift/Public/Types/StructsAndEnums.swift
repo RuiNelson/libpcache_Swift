@@ -14,7 +14,7 @@ import Foundation
 /// 2. A SQLite index database (``databaseURL``) — maps page identifiers to byte offsets in the data file
 ///
 /// - SeeAlso: ``PersistentCache`` for read/write operations on this file pair
-public struct FilePair: Sendable {
+public struct FilePair: Sendable, Equatable {
     /// URL to the SQLite index database file.
     public let databaseURL: URL
     /// URL to the binary data file.
@@ -42,7 +42,7 @@ public struct FilePair: Sendable {
 /// These values are fixed at creation time and stored in the `metadata` table of the SQLite index.
 ///
 /// - SeeAlso: ``PersistentCache.create(files:configuration:options:)`` to create a volume with this configuration
-public struct Configuration: Sendable {
+public struct Configuration: Sendable, Equatable {
     /// Size of every page, in bytes.
     public let pageSize: UInt32
     /// Maximum number of pages the volume can hold.
@@ -128,7 +128,7 @@ public struct Configuration: Sendable {
 }
 
 /// Page occupancy counts for an open ``PersistentCache`` volume.
-public struct PageCount: Sendable {
+public struct PageCount: Sendable, Equatable {
     /// Number of pages currently stored.
     public var used: Int
     /// Number of available slots (`max_pages - used`).
@@ -140,7 +140,7 @@ public struct PageCount: Sendable {
 /// Choose ``fixed`` when the caller manages eviction explicitly and needs writes to fail at capacity.
 /// Choose ``fifo`` for a rolling-window or circular-buffer pattern where the oldest pages are dropped
 /// transparently on overflow.
-public enum CapacityPolicy: Sendable {
+public enum CapacityPolicy: Sendable, Equatable {
     /// Writes beyond ``Configuration/maxPages`` fail with ``PutPagesError/capacityExceeded``.
     /// Deleted pages leave reusable free slots.
     case fixed
@@ -157,7 +157,7 @@ public enum CapacityPolicy: Sendable {
 /// With big-endian, the most-significant byte occupies the lowest address, so a larger counter
 /// always produces a lexicographically greater byte sequence — the two orderings coincide.
 /// With little-endian the orderings diverge for values that cross a byte boundary.
-public enum Endianness: Sendable {
+public enum Endianness: Sendable, Equatable {
     /// Host byte order. Not recommended: volumes become non-portable across machines with different byte orders.
     case native
     /// Least-significant byte at the lowest index.
@@ -186,7 +186,7 @@ public enum Endianness: Sendable {
 /// // Derived id for counter 5: {0xDE,0xAD,0xBE,0xEF, 0x00,0x00,0x00,0x05}
 /// // Derived id for counter 6: {0xDE,0xAD,0xBE,0xEF, 0x00,0x00,0x00,0x06}
 /// ```
-public struct Counter: Sendable {
+public struct Counter: Sendable, Equatable {
     /// Fixed template for identifier derivation.
     let template: Data
     /// Offset from the end of the identifier where the counter ends (0 = last four bytes).

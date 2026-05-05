@@ -1,5 +1,10 @@
 # libpcache_Swift
 
+[![Swift 6.2+](https://img.shields.io/badge/Swift-6.2+-orange.svg)](https://swift.org)
+[![Platform](https://img.shields.io/badge/platform-iOS%20%7C%20macOS%20%7C%20macCatalyst%20%7C%20watchOS%20%7C%20tvOS%20%7C%20visionOS%20%7C%20Linux-lightgrey.svg)](https://github.com/apple/swift-package-manager)
+[![Swift Package Manager](https://img.shields.io/badge/SPM-compatible-brightgreen.svg)](https://swift.org/package-manager/)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 This document describes the Swift language binding for `libpcache`, a persistent storage system for fixed-size pages indexed by binary keys. The underlying implementation is a C library that maintains a SQLite database for the index and a binary file for page data. All operations are atomic and safe for concurrent use.
 
 For a complete description of the volume format, capacity policies, and C API, consult the reference manual of the wrapped library:
@@ -10,17 +15,28 @@ https://github.com/RuiNelson/libpcache
 
 ### Swift Package Manager
 
-Add the following entry to the dependencies array in `Package.swift`:
+Add to your `Package.swift`:
 
 ```swift
-.package(url: "https://github.com/RuiNelson/libpcache_Swift.git", from: "1.0.0")
+dependencies: [
+    .package(url: "https://github.com/RuiNelson/libpcache_Swift.git", from: "1.0.0")
+]
 ```
 
-Then add `"libpcache_Swift"` to the target dependencies.
+Add to your target dependencies:
+
+```swift
+.target(
+    name: "YourTarget",
+    dependencies: ["libpcache_Swift"]
+)
+```
 
 ### Xcode
 
-Open the project. Navigate to **Project → Package Dependencies**. Add a package dependency with the URL `https://github.com/RuiNelson/libpcache_Swift.git` and specify a version rule (up to next major version from `1.0.0`). Link the library to the application target.
+1. File → Add Package Dependencies
+2. Enter: `https://github.com/RuiNelson/libpcache_Swift.git`
+3. Select version and add to your target
 
 ## Cookbook
 
