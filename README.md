@@ -1,11 +1,13 @@
-# libpcache_Swift
+# libpcache_Swift — Persistent Key-Value Cache for Swift
 
 [![Swift 6.2+](https://img.shields.io/badge/Swift-6.2+-orange.svg)](https://swift.org)
 [![Platform](https://img.shields.io/badge/platform-iOS%20%7C%20macOS%20%7C%20macCatalyst%20%7C%20watchOS%20%7C%20tvOS%20%7C%20visionOS%20%7C%20Linux-lightgrey.svg)](https://github.com/apple/swift-package-manager)
 [![Swift Package Manager](https://img.shields.io/badge/SPM-compatible-brightgreen.svg)](https://swift.org/package-manager/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-This document describes the Swift language binding for `libpcache`, a persistent storage system for fixed-size pages indexed by binary keys. The underlying implementation is a C library that maintains a SQLite database for the index and a binary file for page data. All operations are atomic and safe for concurrent use.
+A high-performance persistent key-value cache for Swift — stores fixed-size pages on disk indexed by binary keys of arbitrary length. Built on SQLite for indexing and a binary data file for page storage. Thread-safe, atomic, with sequential counter-based batch I/O.
+
+**Keywords:** Swift persistent cache, high-performance, key-value store, disk cache, SQLite storage, binary page cache, SwiftPM, iOS, macOS, Linux
 
 For a complete description of the volume format, capacity policies, and C API, consult the reference manual of the wrapped library:
 
