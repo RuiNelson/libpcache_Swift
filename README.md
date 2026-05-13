@@ -30,7 +30,7 @@ Add to your target dependencies:
 ```swift
 .target(
     name: "YourTarget",
-    dependencies: ["libpcache_Swift"]
+    dependencies: [.product(name: "libpcache_Swift", package: "libpcache_Swift")]
 )
 ```
 
