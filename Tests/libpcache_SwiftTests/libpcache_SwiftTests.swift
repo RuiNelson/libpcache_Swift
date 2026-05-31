@@ -30,12 +30,12 @@ private func withCache(
     maxPages: Int = 10,
     idWidth: Int = 16,
     policy: CapacityPolicy = .fixed,
-    _ body: (PersistentCache) throws -> Void,
+    _ body: (PersistentCache) throws -> Void
 ) throws {
     let (db, dat, pair) = makeTempFiles()
     defer { cleanup(db, dat) }
     let config = try #require(
-        Configuration(pageSize: pageSize, maxPages: maxPages, idWidth: idWidth, capacityPolicy: policy),
+        Configuration(pageSize: pageSize, maxPages: maxPages, idWidth: idWidth, capacityPolicy: policy)
     )
     try PersistentCache.create(files: pair, configuration: config)
     let cache = try PersistentCache(files: pair)
@@ -96,8 +96,8 @@ struct ConfigurationTests {
                 pageSize: Int(UInt32.max) + 1,
                 maxPages: 100,
                 idWidth: 16,
-                capacityPolicy: .fixed,
-            ) == nil,
+                capacityPolicy: .fixed
+            ) == nil
         )
     }
 
@@ -106,7 +106,7 @@ struct ConfigurationTests {
             capacity: 4096 * 10,
             pageSize: 4096,
             idWidth: 16,
-            capacityPolicy: .fifo,
+            capacityPolicy: .fifo
         )
         #expect(cfg != nil)
         #expect(cfg?.maxPages == 10)
@@ -118,7 +118,7 @@ struct ConfigurationTests {
             capacity: 4096 + 1,
             pageSize: 4096,
             idWidth: 16,
-            capacityPolicy: .fixed,
+            capacityPolicy: .fixed
         )
         #expect(cfg == nil)
     }
@@ -128,7 +128,7 @@ struct ConfigurationTests {
             capacity: 512,
             pageSize: 4096,
             idWidth: 16,
-            capacityPolicy: .fixed,
+            capacityPolicy: .fixed
         )
         #expect(cfg == nil)
     }
@@ -141,7 +141,7 @@ struct CounterTests {
             zeroPad: 2,
             position: 0,
             initialValue: 5,
-            endianness: .bigEndian,
+            endianness: .bigEndian
         )
         #expect(counter.templateWidth == 4)
         #expect(counter.initialValue == 5)
@@ -157,7 +157,7 @@ struct CounterTests {
             zeroPad: 0,
             position: 0,
             initialValue: 0,
-            endianness: .littleEndian,
+            endianness: .littleEndian
         )
         #expect(counter.templateWidth == 1)
     }
@@ -183,7 +183,7 @@ struct LifecycleTests {
         defer { cleanup(db, dat) }
 
         let config = try #require(
-            Configuration(pageSize: 4096, maxPages: 10, idWidth: 16, capacityPolicy: .fixed),
+            Configuration(pageSize: 4096, maxPages: 10, idWidth: 16, capacityPolicy: .fixed)
         )
         try PersistentCache.create(files: pair, configuration: config)
         #expect(FileManager.default.fileExists(atPath: db.path))
@@ -204,7 +204,7 @@ struct LifecycleTests {
         defer { cleanup(db, dat) }
 
         let config = try #require(
-            Configuration(pageSize: 4096, maxPages: 10, idWidth: 16, capacityPolicy: .fixed),
+            Configuration(pageSize: 4096, maxPages: 10, idWidth: 16, capacityPolicy: .fixed)
         )
         try PersistentCache.create(files: pair, configuration: config)
 
@@ -355,7 +355,7 @@ struct ValidationTests {
                 zeroPad: 0,
                 position: 0,
                 initialValue: 0,
-                endianness: .bigEndian,
+                endianness: .bigEndian
             )
             let data = makePage(0xAA, size: 4096)
             #expect(throws: InvalidCall.idBufferIsNotTheExpectedSize) {
@@ -398,7 +398,7 @@ struct PageOperationTests {
                 zeroPad: 0,
                 position: 0,
                 initialValue: 0,
-                endianness: .bigEndian,
+                endianness: .bigEndian
             )
             let pages = Data(repeating: 0x42, count: 4096 * 3)
             try cache.putPages(counter: counter, data: pages)
@@ -602,7 +602,7 @@ struct FIFOPolicyTests {
         defer { cleanup(db, dat) }
 
         let config = try #require(
-            Configuration(pageSize: 4096, maxPages: 10, idWidth: 16, capacityPolicy: .fifo),
+            Configuration(pageSize: 4096, maxPages: 10, idWidth: 16, capacityPolicy: .fifo)
         )
         try PersistentCache.create(files: pair, configuration: config)
         let cache = try PersistentCache(files: pair)
@@ -627,7 +627,7 @@ struct RawSpanTests {
                     try cache.putPages(
                         ids: RawSpan(_unsafeBytes: idsBuf),
                         data: RawSpan(_unsafeBytes: pagesBuf),
-                        durable: false,
+                        durable: false
                     )
                 }
             }
@@ -646,7 +646,7 @@ struct RawSpanTests {
                 try result.withUnsafeMutableBytes { resultBuf in
                     try cache.getPages(
                         ids: RawSpan(_unsafeBytes: idsBuf),
-                        into: MutableRawSpan(_unsafeBytes: resultBuf),
+                        into: MutableRawSpan(_unsafeBytes: resultBuf)
                     )
                 }
             }

@@ -118,7 +118,7 @@ public struct Configuration: Sendable, Equatable {
             pageSize: pageSize,
             maxPages: Int(maxPages),
             idWidth: idWidth,
-            capacityPolicy: capacityPolicy,
+            capacityPolicy: capacityPolicy
         ) else {
             return nil
         }
@@ -137,26 +137,24 @@ public struct PageCount: Sendable, Equatable {
 
 /// Eviction policy applied when a ``PersistentCache`` volume reaches capacity.
 ///
-/// Choose ``fixed`` when the caller manages eviction explicitly and needs writes to fail at capacity.
-/// Choose ``fifo`` for a rolling-window or circular-buffer pattern where the oldest pages are dropped
-/// transparently on overflow.
+/// Choose ``fixed`` when the caller manages eviction explicitly and needs writes to fail at capacity. Choose ``fifo``
+/// for a rolling-window or circular-buffer pattern where the oldest pages are dropped transparently on overflow.
 public enum CapacityPolicy: Sendable, Equatable {
-    /// Writes beyond ``Configuration/maxPages`` fail with ``PutPagesError/capacityExceeded``.
-    /// Deleted pages leave reusable free slots.
+    /// Writes beyond ``Configuration/maxPages`` fail with ``PutPagesError/capacityExceeded``. Deleted pages leave
+    /// reusable free slots.
     case fixed
-    /// Writes beyond ``Configuration/maxPages`` silently evict the oldest page.
-    /// No explicit capacity error is raised.
+    /// Writes beyond ``Configuration/maxPages`` silently evict the oldest page. No explicit capacity error is raised.
     case fifo
 }
 
 /// Byte order used when embedding a counter in page identifiers.
 ///
 /// When using range methods (``PersistentCache/getPagesRange(first:last:)``,
-/// ``PersistentCache/checkPagesRange(first:last:)``, ``PersistentCache/deletePagesRange(first:last:)``)
-/// prefer ``bigEndian``. Range methods compare identifiers byte-by-byte (SQLite BLOB ordering).
-/// With big-endian, the most-significant byte occupies the lowest address, so a larger counter
-/// always produces a lexicographically greater byte sequence — the two orderings coincide.
-/// With little-endian the orderings diverge for values that cross a byte boundary.
+/// ``PersistentCache/checkPagesRange(first:last:)``, ``PersistentCache/deletePagesRange(first:last:)``) prefer
+/// ``bigEndian``. Range methods compare identifiers byte-by-byte (SQLite BLOB ordering). With big-endian, the
+/// most-significant byte occupies the lowest address, so a larger counter always produces a lexicographically greater
+/// byte sequence — the two orderings coincide. With little-endian the orderings diverge for values that cross a byte
+/// boundary.
 public enum Endianness: Sendable, Equatable {
     /// Host byte order. Not recommended: volumes become non-portable across machines with different byte orders.
     case native
@@ -169,23 +167,18 @@ public enum Endianness: Sendable, Equatable {
 /// A counter-based page sequence identifier generator.
 ///
 /// ``Counter`` derives page identifiers automatically from a template: a `UInt32` counter — starting at
-/// ``initialValue``, incremented per page — is XOR'd into four bytes of ``template``.
-/// The operations ``PersistentCache/putPages(counter:data:failIfExists:durable:)``,
-/// ``PersistentCache/getPages(counter:count:)``, ``PersistentCache/checkPages(counter:count:)``,
-/// and ``PersistentCache/deletePages(counter:count:wipeDataFile:durable:)`` share the same identifier
-/// derivation scheme. The operations are therefore symmetric: the same `template`, `start`, `count`,
-/// `position`, and `endianness` reconstruct the same identifiers for reads, checks, and deletes
-/// as were used for writes.
+/// ``initialValue``, incremented per page — is XOR'd into four bytes of ``template``. The operations
+/// ``PersistentCache/putPages(counter:data:failIfExists:durable:)``, ``PersistentCache/getPages(counter:count:)``,
+/// ``PersistentCache/checkPages(counter:count:)``, and
+/// ``PersistentCache/deletePages(counter:count:wipeDataFile:durable:)`` share the same identifier derivation scheme.
+/// The operations are therefore symmetric: the same `template`, `start`, `count`, `position`, and `endianness`
+/// reconstruct the same identifiers for reads, checks, and deletes as were used for writes.
 ///
-/// ### Identifier Derivation Example
-/// With `idWidth = 8`, `template = {0xDE,0xAD,0xBE,0xEF, 0x00,0x00,0x00,0x00}`,
-/// `start = 5`, `position = 0`, and ``bigEndian``, the counter value 5 is encoded as
-/// `{0x00,0x00,0x00,0x05}` and XOR'd into bytes `[4..7]`:
-/// ```swift
-/// // template[4..7] ^ {0x00,0x00,0x00,0x05} = {0x00,0x00,0x00,0x05}
-/// // Derived id for counter 5: {0xDE,0xAD,0xBE,0xEF, 0x00,0x00,0x00,0x05}
-/// // Derived id for counter 6: {0xDE,0xAD,0xBE,0xEF, 0x00,0x00,0x00,0x06}
-/// ```
+/// ### Identifier Derivation Example With `idWidth = 8`, `template = {0xDE,0xAD,0xBE,0xEF, 0x00,0x00,0x00,0x00}`,
+/// `start = 5`, `position = 0`, and ``bigEndian``, the counter value 5 is encoded as `{0x00,0x00,0x00,0x05}` and XOR'd
+/// into bytes `[4..7]`: ```swift // template[4..7] ^ {0x00,0x00,0x00,0x05} = {0x00,0x00,0x00,0x05} // Derived id for
+/// counter 5: {0xDE,0xAD,0xBE,0xEF, 0x00,0x00,0x00,0x05} // Derived id for counter 6: {0xDE,0xAD,0xBE,0xEF,
+/// 0x00,0x00,0x00,0x06} ```
 public struct Counter: Sendable, Equatable {
     /// Fixed template for identifier derivation.
     let template: Data
@@ -199,8 +192,8 @@ public struct Counter: Sendable, Equatable {
     /// Creates a new counter.
     ///
     /// - Parameters:
-    ///   - template: Fixed identifier template. The counter will be XOR'd into the last four bytes
-    ///     (or at `position` bytes from the end).
+    ///   - template: Fixed identifier template. The counter will be XOR'd into the last four bytes (or at `position`
+    /// bytes from the end).
     ///   - zeroPad: Number of zero bytes to append to the template.
     ///   - position: Offset from the end where the counter ends (0 = last four bytes).
     ///   - initialValue: Starting counter value.
@@ -210,7 +203,7 @@ public struct Counter: Sendable, Equatable {
         zeroPad: Int,
         position: Int,
         initialValue: Int,
-        endianness: Endianness,
+        endianness: Endianness
     ) {
         var template = template
 
@@ -228,8 +221,8 @@ public struct Counter: Sendable, Equatable {
     ///
     /// A negative `by` is equivalent to calling ``backwards(_:)`` with its absolute value.
     ///
-    /// - Precondition: The resulting value must be representable as `UInt32`
-    ///   (i.e. in the closed interval `[0, UInt32.max]`).
+    /// - Precondition: The resulting value must be representable as `UInt32` (i.e. in the closed interval `[0,
+    /// UInt32.max]`).
     public mutating func advance(_ by: Int) {
         let (sum, overflow) = Int(initialValue).addingReportingOverflow(by)
         initialValue = Counter.checkedUInt32(sum, overflow: overflow, op: "advance")
@@ -239,8 +232,8 @@ public struct Counter: Sendable, Equatable {
     ///
     /// A negative `by` is equivalent to calling ``advance(_:)`` with its absolute value.
     ///
-    /// - Precondition: The resulting value must be representable as `UInt32`
-    ///   (i.e. in the closed interval `[0, UInt32.max]`).
+    /// - Precondition: The resulting value must be representable as `UInt32` (i.e. in the closed interval `[0,
+    /// UInt32.max]`).
     public mutating func backwards(_ by: Int) {
         let (diff, overflow) = Int(initialValue).subtractingReportingOverflow(by)
         initialValue = Counter.checkedUInt32(diff, overflow: overflow, op: "backwards")
@@ -250,7 +243,7 @@ public struct Counter: Sendable, Equatable {
     private static func checkedUInt32(_ value: Int, overflow: Bool, op: String) -> UInt32 {
         precondition(
             !overflow && value >= 0 && value <= Int(UInt32.max),
-            "Counter \(op) produced out-of-range value: \(value).",
+            "Counter \(op) produced out-of-range value: \(value)."
         )
         return UInt32(value)
     }
@@ -263,8 +256,8 @@ public struct Counter: Sendable, Equatable {
 
 /// A read-only memory region for passing to libpcache C functions.
 ///
-/// Use as ``CBuffer`` when the C function does not modify the data,
-/// or ``CMutableBuffer`` when the C function writes to the buffer.
+/// Use as ``CBuffer`` when the C function does not modify the data, or ``CMutableBuffer`` when the C function writes to
+/// the buffer.
 public typealias CBuffer = (pointer: UnsafeRawPointer, count: Int)
 
 /// A mutable memory region for passing to libpcache C functions.

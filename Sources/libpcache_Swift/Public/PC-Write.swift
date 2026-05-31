@@ -11,8 +11,8 @@ import Foundation
 public extension PersistentCache {
     /// Stores a single page identified by `id`.
     ///
-    /// On FIFO volumes, pages beyond `maxPages` are evicted automatically.
-    /// On FIXED volumes, writes beyond capacity fail with ``PutPagesError/capacityExceeded``.
+    /// On FIFO volumes, pages beyond `maxPages` are evicted automatically. On FIXED volumes, writes beyond capacity
+    /// fail with ``PutPagesError/capacityExceeded``.
     ///
     /// - Parameters:
     ///   - id: Page identifier; must be exactly ``Configuration/idWidthInt`` bytes.
@@ -20,17 +20,15 @@ public extension PersistentCache {
     ///   - failIfExists: If `true`, verify that no page with the same identifier already exists before writing.
     ///   - durable: If `true`, block until data is durable on disk.
     ///
-    /// - Throws: ``InvalidCall/idBufferIsNotTheExpectedSize`` or ``InvalidCall/dataBufferIsNotTheExpectedSize``
-    ///   if either buffer has the wrong length; ``PutPagesError`` on write failure;
-    ///   ``CommonErrors/invalidHandle`` if the volume handle is invalid;
-    ///   ``CommonErrors/outOfMemory`` on allocation failure;
-    ///   ``POSIXError`` on I/O failure; ``SQLiteError`` on database failure;
-    ///   ``UnknownLibPCacheError`` for unrecognized C error codes.
+    /// - Throws: ``InvalidCall/idBufferIsNotTheExpectedSize`` or ``InvalidCall/dataBufferIsNotTheExpectedSize`` if
+    /// either buffer has the wrong length; ``PutPagesError`` on write failure; ``CommonErrors/invalidHandle`` if the
+    /// volume handle is invalid; ``CommonErrors/outOfMemory`` on allocation failure; ``POSIXError`` on I/O failure;
+    /// ``SQLiteError`` on database failure; ``UnknownLibPCacheError`` for unrecognized C error codes.
     func putPage(
         id: CBuffer,
         data: CBuffer,
         failIfExists: Bool = false,
-        durable: Bool = true,
+        durable: Bool = true
     ) throws {
         try validateIDBuffer(id)
         try validateDataBuffer(data)
@@ -39,15 +37,14 @@ public extension PersistentCache {
             id: id.pointer,
             pageData: data.pointer,
             failIfExists: failIfExists,
-            durable: durable,
+            durable: durable
         )
     }
 
     /// Stores multiple pages in a single atomic operation.
     ///
-    /// The operation is atomic: either all pages are written, or none are.
-    /// On FIFO volumes, pages beyond `maxPages` are evicted automatically.
-    /// On FIXED volumes, writes beyond capacity fail with ``PutPagesError/capacityExceeded``.
+    /// The operation is atomic: either all pages are written, or none are. On FIFO volumes, pages beyond `maxPages` are
+    /// evicted automatically. On FIXED volumes, writes beyond capacity fail with ``PutPagesError/capacityExceeded``.
     ///
     /// - Parameters:
     ///   - ids: Page identifiers; must be `count * idWidth` bytes, where `count = ids.count / idWidth`.
@@ -56,17 +53,15 @@ public extension PersistentCache {
     ///   - durable: If `true`, block until data is durable on disk.
     ///
     /// - Throws: ``InvalidCall/idBufferIsNotTheExpectedSize`` or
-    ///   ``InvalidCall/numberOfItemsInIDBufferDoesNotMatchTheNumberOfItemsInDataBuffer``
-    ///   if the buffers are mismatched; ``PutPagesError`` on write failure;
-    ///   ``CommonErrors/invalidHandle`` if the volume handle is invalid;
-    ///   ``CommonErrors/outOfMemory`` on allocation failure;
-    ///   ``POSIXError`` on I/O failure; ``SQLiteError`` on database failure;
-    ///   ``UnknownLibPCacheError`` for unrecognized C error codes.
+    /// ``InvalidCall/numberOfItemsInIDBufferDoesNotMatchTheNumberOfItemsInDataBuffer`` if the buffers are mismatched;
+    /// ``PutPagesError`` on write failure; ``CommonErrors/invalidHandle`` if the volume handle is invalid;
+    /// ``CommonErrors/outOfMemory`` on allocation failure; ``POSIXError`` on I/O failure; ``SQLiteError`` on database
+    /// failure; ``UnknownLibPCacheError`` for unrecognized C error codes.
     func putPages(
         ids: CBuffer,
         data: CBuffer,
         failIfExists: Bool = false,
-        durable: Bool = true,
+        durable: Bool = true
     ) throws {
         let count = try validateMatchingCounts(ids: ids, pages: data)
         guard count > 0 else { return }
@@ -76,7 +71,7 @@ public extension PersistentCache {
             ids: ids.pointer,
             pagesData: data.pointer,
             failIfExists: failIfExists,
-            durable: durable,
+            durable: durable
         )
     }
 
@@ -88,17 +83,15 @@ public extension PersistentCache {
     ///   - failIfExists: If `true`, verify that none of the computed identifiers already exist before writing.
     ///   - durable: If `true`, block until data is durable on disk.
     ///
-    /// - Throws: ``InvalidCall/idBufferIsNotTheExpectedSize`` if the counter template width is wrong;
-    ///   ``PutPagesError`` on write failure;
-    ///   ``CommonErrors/invalidHandle`` if the volume handle is invalid;
-    ///   ``CommonErrors/outOfMemory`` on allocation failure;
-    ///   ``POSIXError`` on I/O failure; ``SQLiteError`` on database failure;
-    ///   ``UnknownLibPCacheError`` for unrecognized C error codes.
+    /// - Throws: ``InvalidCall/idBufferIsNotTheExpectedSize`` if the counter template width is wrong; ``PutPagesError``
+    /// on write failure; ``CommonErrors/invalidHandle`` if the volume handle is invalid; ``CommonErrors/outOfMemory``
+    /// on allocation failure; ``POSIXError`` on I/O failure; ``SQLiteError`` on database failure;
+    /// ``UnknownLibPCacheError`` for unrecognized C error codes.
     func putPages(
         counter: Counter,
         data: CBuffer,
         failIfExists: Bool = false,
-        durable: Bool = true,
+        durable: Bool = true
     ) throws {
         try validateCounter(counter)
         let count = try itemCount(fromPages: data)
@@ -114,7 +107,7 @@ public extension PersistentCache {
                 endianness: counter.endianness,
                 pagesData: data.pointer,
                 failIfExists: failIfExists,
-                durable: durable,
+                durable: durable
             )
         }
     }
@@ -131,13 +124,13 @@ public extension PersistentCache {
     ///   - failIfExists: If `true`, verify that no page with the same identifier already exists before writing.
     ///   - durable: If `true`, block until data is durable on disk.
     ///
-    /// - Throws: ``InvalidCall`` on invalid buffer size; ``PutPagesError`` on write failure;
-    ///   ``CommonErrors``, ``POSIXError``, ``SQLiteError``, or ``UnknownLibPCacheError`` from the underlying operation.
+    /// - Throws: ``InvalidCall`` on invalid buffer size; ``PutPagesError`` on write failure; ``CommonErrors``,
+    /// ``POSIXError``, ``SQLiteError``, or ``UnknownLibPCacheError`` from the underlying operation.
     func putPage(
         id: RawSpan,
         data: RawSpan,
         failIfExists: Bool = false,
-        durable: Bool = true,
+        durable: Bool = true
     ) throws {
         try id.withUnsafeBytes { idBuf in
             try data.withUnsafeBytes { dataBuf in
@@ -145,7 +138,7 @@ public extension PersistentCache {
                     id: idBuf.cBuffer,
                     data: dataBuf.cBuffer,
                     failIfExists: failIfExists,
-                    durable: durable,
+                    durable: durable
                 )
             }
         }
@@ -159,13 +152,13 @@ public extension PersistentCache {
     ///   - failIfExists: If `true`, verify that none of the identifiers already exist before writing.
     ///   - durable: If `true`, block until data is durable on disk.
     ///
-    /// - Throws: ``InvalidCall`` on invalid buffer size; ``PutPagesError`` on write failure;
-    ///   ``CommonErrors``, ``POSIXError``, ``SQLiteError``, or ``UnknownLibPCacheError`` from the underlying operation.
+    /// - Throws: ``InvalidCall`` on invalid buffer size; ``PutPagesError`` on write failure; ``CommonErrors``,
+    /// ``POSIXError``, ``SQLiteError``, or ``UnknownLibPCacheError`` from the underlying operation.
     func putPages(
         ids: RawSpan,
         data: RawSpan,
         failIfExists: Bool = false,
-        durable: Bool = true,
+        durable: Bool = true
     ) throws {
         try ids.withUnsafeBytes { idsBuf in
             try data.withUnsafeBytes { dataBuf in
@@ -173,7 +166,7 @@ public extension PersistentCache {
                     ids: idsBuf.cBuffer,
                     data: dataBuf.cBuffer,
                     failIfExists: failIfExists,
-                    durable: durable,
+                    durable: durable
                 )
             }
         }
@@ -187,15 +180,15 @@ public extension PersistentCache {
     ///   - failIfExists: If `true`, verify that none of the computed identifiers already exist before writing.
     ///   - durable: If `true`, block until data is durable on disk.
     ///
-    /// - Throws: ``InvalidCall`` on invalid buffer size; ``PutPagesError`` on write failure;
-    ///   ``CommonErrors``, ``POSIXError``, ``SQLiteError``, or ``UnknownLibPCacheError`` from the underlying operation.
+    /// - Throws: ``InvalidCall`` on invalid buffer size; ``PutPagesError`` on write failure; ``CommonErrors``,
+    /// ``POSIXError``, ``SQLiteError``, or ``UnknownLibPCacheError`` from the underlying operation.
     func putPages(counter: Counter, data: RawSpan, failIfExists: Bool = false, durable: Bool = true) throws {
         try data.withUnsafeBytes { dataBuf in
             try putPages(
                 counter: counter,
                 data: dataBuf.cBuffer,
                 failIfExists: failIfExists,
-                durable: durable,
+                durable: durable
             )
         }
     }
@@ -212,13 +205,13 @@ public extension PersistentCache {
     ///   - failIfExists: If `true`, verify that no page with the same identifier already exists before writing.
     ///   - durable: If `true`, block until data is durable on disk.
     ///
-    /// - Throws: ``InvalidCall`` on invalid buffer size; ``PutPagesError`` on write failure;
-    ///   ``CommonErrors``, ``POSIXError``, ``SQLiteError``, or ``UnknownLibPCacheError`` from the underlying operation.
+    /// - Throws: ``InvalidCall`` on invalid buffer size; ``PutPagesError`` on write failure; ``CommonErrors``,
+    /// ``POSIXError``, ``SQLiteError``, or ``UnknownLibPCacheError`` from the underlying operation.
     func putPage(
         id: some ContiguousBytes,
         data: some ContiguousBytes,
         failIfExists: Bool = false,
-        durable: Bool = true,
+        durable: Bool = true
     ) throws {
         try id.withUnsafeBytes { idBuf in
             try data.withUnsafeBytes { dataBuf in
@@ -226,7 +219,7 @@ public extension PersistentCache {
                     id: idBuf.cBuffer,
                     data: dataBuf.cBuffer,
                     failIfExists: failIfExists,
-                    durable: durable,
+                    durable: durable
                 )
             }
         }
@@ -240,13 +233,13 @@ public extension PersistentCache {
     ///   - failIfExists: If `true`, verify that none of the identifiers already exist before writing.
     ///   - durable: If `true`, block until data is durable on disk.
     ///
-    /// - Throws: ``InvalidCall`` on invalid buffer size; ``PutPagesError`` on write failure;
-    ///   ``CommonErrors``, ``POSIXError``, ``SQLiteError``, or ``UnknownLibPCacheError`` from the underlying operation.
+    /// - Throws: ``InvalidCall`` on invalid buffer size; ``PutPagesError`` on write failure; ``CommonErrors``,
+    /// ``POSIXError``, ``SQLiteError``, or ``UnknownLibPCacheError`` from the underlying operation.
     func putPages(
         ids: some ContiguousBytes,
         data: some ContiguousBytes,
         failIfExists: Bool = false,
-        durable: Bool = true,
+        durable: Bool = true
     ) throws {
         try ids.withUnsafeBytes { idsBuf in
             try data.withUnsafeBytes { dataBuf in
@@ -254,7 +247,7 @@ public extension PersistentCache {
                     ids: idsBuf.cBuffer,
                     data: dataBuf.cBuffer,
                     failIfExists: failIfExists,
-                    durable: durable,
+                    durable: durable
                 )
             }
         }
@@ -268,20 +261,20 @@ public extension PersistentCache {
     ///   - failIfExists: If `true`, verify that none of the computed identifiers already exist before writing.
     ///   - durable: If `true`, block until data is durable on disk.
     ///
-    /// - Throws: ``InvalidCall`` on invalid buffer size; ``PutPagesError`` on write failure;
-    ///   ``CommonErrors``, ``POSIXError``, ``SQLiteError``, or ``UnknownLibPCacheError`` from the underlying operation.
+    /// - Throws: ``InvalidCall`` on invalid buffer size; ``PutPagesError`` on write failure; ``CommonErrors``,
+    /// ``POSIXError``, ``SQLiteError``, or ``UnknownLibPCacheError`` from the underlying operation.
     func putPages(
         counter: Counter,
         data: some ContiguousBytes,
         failIfExists: Bool = false,
-        durable: Bool = true,
+        durable: Bool = true
     ) throws {
         try data.withUnsafeBytes { dataBuf in
             try putPages(
                 counter: counter,
                 data: dataBuf.cBuffer,
                 failIfExists: failIfExists,
-                durable: durable,
+                durable: durable
             )
         }
     }
@@ -320,9 +313,8 @@ public extension PersistentCache {
     ///   - failIfExists: If `true`, verify that none of the identifiers already exist before writing.
     ///   - durable: If `true`, block until data is durable on disk.
     ///
-    /// - Throws: ``InvalidCall`` on invalid buffer size or mismatched array counts;
-    ///   ``PutPagesError`` on write failure;
-    ///   ``CommonErrors``, ``POSIXError``, ``SQLiteError``, or ``UnknownLibPCacheError`` from the underlying operation.
+    /// - Throws: ``InvalidCall`` on invalid buffer size or mismatched array counts; ``PutPagesError`` on write failure;
+    /// ``CommonErrors``, ``POSIXError``, ``SQLiteError``, or ``UnknownLibPCacheError`` from the underlying operation.
     func putPages(ids: [Data], data: [Data], failIfExists: Bool = false, durable: Bool = true) throws {
         guard ids.count == data.count else {
             throw InvalidCall.numberOfItemsInIDBufferDoesNotMatchTheNumberOfItemsInDataBuffer
@@ -336,7 +328,7 @@ public extension PersistentCache {
             ids: ids.squashed(),
             data: data.squashed(),
             failIfExists: failIfExists,
-            durable: durable,
+            durable: durable
         )
     }
 
@@ -348,8 +340,8 @@ public extension PersistentCache {
     ///   - failIfExists: If `true`, verify that none of the computed identifiers already exist before writing.
     ///   - durable: If `true`, block until data is durable on disk.
     ///
-    /// - Throws: ``InvalidCall`` on invalid buffer size; ``PutPagesError`` on write failure;
-    ///   ``CommonErrors``, ``POSIXError``, ``SQLiteError``, or ``UnknownLibPCacheError`` from the underlying operation.
+    /// - Throws: ``InvalidCall`` on invalid buffer size; ``PutPagesError`` on write failure; ``CommonErrors``,
+    /// ``POSIXError``, ``SQLiteError``, or ``UnknownLibPCacheError`` from the underlying operation.
     func putPages(counter: Counter, data: [Data], failIfExists: Bool = false, durable: Bool = true) throws {
         guard !data.isEmpty else { return }
 
@@ -360,7 +352,7 @@ public extension PersistentCache {
             counter: counter,
             data: data.squashed(),
             failIfExists: failIfExists,
-            durable: durable,
+            durable: durable
         )
     }
 }
@@ -375,13 +367,12 @@ public extension PersistentCache {
     ///   - failIfExists: If `true`, verify that none of the identifiers already exist before writing.
     ///   - durable: If `true`, block until data is durable on disk.
     ///
-    /// - Throws: ``InvalidCall`` on invalid buffer size;
-    ///   ``PutPagesError`` on write failure;
-    ///   ``CommonErrors``, ``POSIXError``, ``SQLiteError``, or ``UnknownLibPCacheError`` from the underlying operation.
+    /// - Throws: ``InvalidCall`` on invalid buffer size; ``PutPagesError`` on write failure; ``CommonErrors``,
+    /// ``POSIXError``, ``SQLiteError``, or ``UnknownLibPCacheError`` from the underlying operation.
     func putPages(
         pages: [(id: Data, data: Data)],
         failIfExists: Bool = false,
-        durable: Bool = true,
+        durable: Bool = true
     ) throws {
         guard !pages.isEmpty else { return }
 
@@ -389,7 +380,7 @@ public extension PersistentCache {
             ids: pages.map(\.id),
             data: pages.map(\.data),
             failIfExists: failIfExists,
-            durable: durable,
+            durable: durable
         )
     }
 }

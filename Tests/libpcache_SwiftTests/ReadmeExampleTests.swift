@@ -36,7 +36,7 @@ struct ReadmeExampleTests {
             pageSize: pageSize,
             maxPages: pageCount,
             idWidth: idSize,
-            capacityPolicy: .fixed,
+            capacityPolicy: .fixed
         )!
 
         try PersistentCache.create(files: files, configuration: config)
@@ -78,7 +78,7 @@ struct ReadmeExampleTests {
             pageSize: pageSize,
             maxPages: 1000,
             idWidth: idSize,
-            capacityPolicy: .fixed,
+            capacityPolicy: .fixed
         )!
 
         try PersistentCache.create(files: files, configuration: config)
@@ -90,7 +90,7 @@ struct ReadmeExampleTests {
             zeroPad: 2,
             position: 0,
             initialValue: 0,
-            endianness: .bigEndian,
+            endianness: .bigEndian
         )
 
         let batchData = Data(repeating: 0x12, count: pageSize * 100)

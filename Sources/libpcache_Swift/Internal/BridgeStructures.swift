@@ -21,7 +21,7 @@ extension Configuration {
             capacity_policy: capacityPolicy.cValue,
             page_size: pageSize,
             max_pages: maxPages,
-            id_size: idWidth,
+            id_size: idWidth
         )
     }
 }

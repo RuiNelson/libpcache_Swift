@@ -68,9 +68,8 @@ public enum PutPagesError: Error, Equatable {
 
 /// Errors returned by read operations on a ``PersistentCache`` volume.
 ///
-/// Read operations include ``PersistentCache/getPage(id:data:)``,
-/// ``PersistentCache/getPages(ids:data:)``, ``PersistentCache/getPages(counter:data:)``,
-/// and ``PersistentCache/getPagesRange(first:last:idsOut:pagesOut:)``.
+/// Read operations include ``PersistentCache/getPage(id:data:)``, ``PersistentCache/getPages(ids:data:)``,
+/// ``PersistentCache/getPages(counter:data:)``, and ``PersistentCache/getPagesRange(first:last:idsOut:pagesOut:)``.
 public enum GetPagesError: Error, Equatable {
     /// No page with the given identifier exists in the volume.
     case notFound
@@ -84,10 +83,9 @@ public enum GetPagesError: Error, Equatable {
 
 /// Errors returned by check operations on a ``PersistentCache`` volume.
 ///
-/// Check operations include ``PersistentCache/checkPage(id:)``,
-/// ``PersistentCache/checkPages(ids:)``, ``PersistentCache/checkPages(counter:count:)``,
-/// and ``PersistentCache/checkPagesRange(first:last:)``.
-public enum CheckPagesError: Error, Equatable{
+/// Check operations include ``PersistentCache/checkPage(id:)``, ``PersistentCache/checkPages(ids:)``,
+/// ``PersistentCache/checkPages(counter:count:)``, and ``PersistentCache/checkPagesRange(first:last:)``.
+public enum CheckPagesError: Error, Equatable {
     /// `position` is out of bounds, the counter would overflow, or `endianness` is invalid.
     case invalidArgument
     /// `first` is greater than `last`.
@@ -98,8 +96,8 @@ public enum CheckPagesError: Error, Equatable{
 ///
 /// Delete operations include ``PersistentCache/deletePage(id:wipeDataFile:durable:)``,
 /// ``PersistentCache/deletePages(ids:wipeDataFile:durable:)``,
-/// ``PersistentCache/deletePages(counter:count:wipeDataFile:durable:)``,
-/// and ``PersistentCache/deletePagesRange(first:last:wipeDataFile:durable:)``.
+/// ``PersistentCache/deletePages(counter:count:wipeDataFile:durable:)``, and
+/// ``PersistentCache/deletePagesRange(first:last:wipeDataFile:durable:)``.
 public enum DeletePagesError: Error, Equatable {
     /// `first` is greater than `last`.
     case invalidRange
@@ -121,9 +119,8 @@ public enum VolumeSetMaxPagesError: Error, Equatable {
 
 /// Unknown error returned by the underlying libpcache library.
 ///
-/// Inspect ``libpcacheCode`` for the raw error code,
-/// ``sqlite3`` for the SQLite error code if available,
-/// and ``posix`` for the POSIX error code if available.
+/// Inspect ``libpcacheCode`` for the raw error code, ``sqlite3`` for the SQLite error code if available, and ``posix``
+/// for the POSIX error code if available.
 public struct UnknownLibPCacheError: Error, Equatable {
     /// The raw libpcache error code.
     public let libpcacheCode: UInt32

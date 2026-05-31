@@ -18,30 +18,28 @@ public extension PersistentCache {
     ///   - wipe: If `true`, overwrite the page data with zeros.
     ///   - durable: If `true`, block until data is durable on disk.
     ///
-    /// - Throws: ``InvalidCall/idBufferIsNotTheExpectedSize`` if `id` has the wrong length;
-    ///   ``DeletePagesError`` on delete failure;
-    ///   ``CommonErrors/invalidHandle`` if the volume handle is invalid;
-    ///   ``CommonErrors/outOfMemory`` on allocation failure;
-    ///   ``POSIXError`` on I/O failure; ``SQLiteError`` on database failure;
-    ///   ``UnknownLibPCacheError`` for unrecognized C error codes.
+    /// - Throws: ``InvalidCall/idBufferIsNotTheExpectedSize`` if `id` has the wrong length; ``DeletePagesError`` on
+    /// delete failure; ``CommonErrors/invalidHandle`` if the volume handle is invalid; ``CommonErrors/outOfMemory`` on
+    /// allocation failure; ``POSIXError`` on I/O failure; ``SQLiteError`` on database failure;
+    /// ``UnknownLibPCacheError`` for unrecognized C error codes.
     func deletePage(
         id: CBuffer,
         wipe: Bool = false,
-        durable: Bool = true,
+        durable: Bool = true
     ) throws {
         try validateIDBuffer(id)
         try b_deletePage(
             handle: handle,
             id: id.pointer,
             wipeDataFile: wipe,
-            durable: durable,
+            durable: durable
         )
     }
 
     /// Deletes multiple pages from the volume.
     ///
-    /// Identifiers that are not present in the volume are silently skipped.
-    /// The deletions of the matching pages are committed atomically in a single transaction.
+    /// Identifiers that are not present in the volume are silently skipped. The deletions of the matching pages are
+    /// committed atomically in a single transaction.
     ///
     /// - Parameters:
     ///   - ids: Page identifiers; must be `count * idWidth` bytes.
@@ -49,15 +47,13 @@ public extension PersistentCache {
     ///   - durable: If `true`, block until data is durable on disk.
     ///
     /// - Throws: ``InvalidCall/idBufferIsNotTheExpectedSize`` if `ids` is not a multiple of `idWidth`;
-    ///   ``DeletePagesError`` on delete failure;
-    ///   ``CommonErrors/invalidHandle`` if the volume handle is invalid;
-    ///   ``CommonErrors/outOfMemory`` on allocation failure;
-    ///   ``POSIXError`` on I/O failure; ``SQLiteError`` on database failure;
-    ///   ``UnknownLibPCacheError`` for unrecognized C error codes.
+    /// ``DeletePagesError`` on delete failure; ``CommonErrors/invalidHandle`` if the volume handle is invalid;
+    /// ``CommonErrors/outOfMemory`` on allocation failure; ``POSIXError`` on I/O failure; ``SQLiteError`` on database
+    /// failure; ``UnknownLibPCacheError`` for unrecognized C error codes.
     func deletePages(
         ids: CBuffer,
         wipe: Bool = false,
-        durable: Bool = true,
+        durable: Bool = true
     ) throws {
         let count = try itemCount(fromIDs: ids)
         guard count > 0 else { return }
@@ -66,7 +62,7 @@ public extension PersistentCache {
             count: count,
             ids: ids.pointer,
             wipeDataFile: wipe,
-            durable: durable,
+            durable: durable
         )
     }
 
@@ -78,19 +74,16 @@ public extension PersistentCache {
     ///   - wipe: If `true`, overwrite the page data with zeros.
     ///   - durable: If `true`, block until data is durable on disk.
     ///
-    /// - Throws: ``InvalidCall/invalidArguments`` if `count` is negative;
-    ///   ``InvalidCall/idBufferIsNotTheExpectedSize`` if the counter template width is wrong;
-    ///   ``DeletePagesError/invalidArgument`` if `position` is out of bounds, the counter overflows,
-    ///   or `endianness` is invalid;
-    ///   ``CommonErrors/invalidHandle`` if the volume handle is invalid;
-    ///   ``CommonErrors/outOfMemory`` on allocation failure;
-    ///   ``POSIXError`` on I/O failure; ``SQLiteError`` on database failure;
-    ///   ``UnknownLibPCacheError`` for unrecognized C error codes.
+    /// - Throws: ``InvalidCall/invalidArguments`` if `count` is negative; ``InvalidCall/idBufferIsNotTheExpectedSize``
+    /// if the counter template width is wrong; ``DeletePagesError/invalidArgument`` if `position` is out of bounds, the
+    /// counter overflows, or `endianness` is invalid; ``CommonErrors/invalidHandle`` if the volume handle is invalid;
+    /// ``CommonErrors/outOfMemory`` on allocation failure; ``POSIXError`` on I/O failure; ``SQLiteError`` on database
+    /// failure; ``UnknownLibPCacheError`` for unrecognized C error codes.
     func deletePages(
         counter: Counter,
         count: Int,
         wipe: Bool = false,
-        durable: Bool = true,
+        durable: Bool = true
     ) throws {
         guard count >= 0 else { throw InvalidCall.invalidArguments }
         try validateCounter(counter)
@@ -104,7 +97,7 @@ public extension PersistentCache {
                 position: counter.position,
                 endianness: counter.endianness,
                 wipeDataFile: wipe,
-                durable: durable,
+                durable: durable
             )
         }
     }
@@ -120,16 +113,14 @@ public extension PersistentCache {
     ///   - durable: If `true`, block until data is durable on disk.
     ///
     /// - Throws: ``InvalidCall/idBufferIsNotTheExpectedSize`` if either buffer has the wrong length;
-    ///   ``DeletePagesError/invalidRange`` if `first > last`;
-    ///   ``CommonErrors/invalidHandle`` if the volume handle is invalid;
-    ///   ``CommonErrors/outOfMemory`` on allocation failure;
-    ///   ``POSIXError`` on I/O failure; ``SQLiteError`` on database failure;
-    ///   ``UnknownLibPCacheError`` for unrecognized C error codes.
+    /// ``DeletePagesError/invalidRange`` if `first > last`; ``CommonErrors/invalidHandle`` if the volume handle is
+    /// invalid; ``CommonErrors/outOfMemory`` on allocation failure; ``POSIXError`` on I/O failure; ``SQLiteError`` on
+    /// database failure; ``UnknownLibPCacheError`` for unrecognized C error codes.
     func deletePagesRange(
         first: CBuffer,
         last: CBuffer,
         wipe: Bool = false,
-        durable: Bool = true,
+        durable: Bool = true
     ) throws {
         try validateIDBuffer(first)
         try validateIDBuffer(last)
@@ -138,7 +129,7 @@ public extension PersistentCache {
             first: first.pointer,
             last: last.pointer,
             wipeDataFile: wipe,
-            durable: durable,
+            durable: durable
         )
     }
 }
@@ -153,12 +144,12 @@ public extension PersistentCache {
     ///   - wipe: If `true`, overwrite the page data with zeros.
     ///   - durable: If `true`, block until data is durable on disk.
     ///
-    /// - Throws: ``InvalidCall`` on invalid buffer size; ``DeletePagesError`` on delete failure;
-    ///   ``CommonErrors``, ``POSIXError``, ``SQLiteError``, or ``UnknownLibPCacheError`` from the underlying operation.
+    /// - Throws: ``InvalidCall`` on invalid buffer size; ``DeletePagesError`` on delete failure; ``CommonErrors``,
+    /// ``POSIXError``, ``SQLiteError``, or ``UnknownLibPCacheError`` from the underlying operation.
     func deletePage(
         id: RawSpan,
         wipe: Bool = false,
-        durable: Bool = true,
+        durable: Bool = true
     ) throws {
         try id.withUnsafeBytes { idBuf in
             try deletePage(id: idBuf.cBuffer, wipe: wipe, durable: durable)
@@ -172,12 +163,12 @@ public extension PersistentCache {
     ///   - wipe: If `true`, overwrite the page data with zeros.
     ///   - durable: If `true`, block until data is durable on disk.
     ///
-    /// - Throws: ``InvalidCall`` on invalid buffer size; ``DeletePagesError`` on delete failure;
-    ///   ``CommonErrors``, ``POSIXError``, ``SQLiteError``, or ``UnknownLibPCacheError`` from the underlying operation.
+    /// - Throws: ``InvalidCall`` on invalid buffer size; ``DeletePagesError`` on delete failure; ``CommonErrors``,
+    /// ``POSIXError``, ``SQLiteError``, or ``UnknownLibPCacheError`` from the underlying operation.
     func deletePages(
         ids: RawSpan,
         wipe: Bool = false,
-        durable: Bool = true,
+        durable: Bool = true
     ) throws {
         try ids.withUnsafeBytes { idsBuf in
             try deletePages(ids: idsBuf.cBuffer, wipe: wipe, durable: durable)
@@ -192,13 +183,13 @@ public extension PersistentCache {
     ///   - wipe: If `true`, overwrite the page data with zeros.
     ///   - durable: If `true`, block until data is durable on disk.
     ///
-    /// - Throws: ``InvalidCall`` on invalid buffer size; ``DeletePagesError`` on delete failure;
-    ///   ``CommonErrors``, ``POSIXError``, ``SQLiteError``, or ``UnknownLibPCacheError`` from the underlying operation.
+    /// - Throws: ``InvalidCall`` on invalid buffer size; ``DeletePagesError`` on delete failure; ``CommonErrors``,
+    /// ``POSIXError``, ``SQLiteError``, or ``UnknownLibPCacheError`` from the underlying operation.
     func deletePagesRange(
         first: RawSpan,
         last: RawSpan,
         wipe: Bool = false,
-        durable: Bool = true,
+        durable: Bool = true
     ) throws {
         try first.withUnsafeBytes { firstBuf in
             try last.withUnsafeBytes { lastBuf in
@@ -206,7 +197,7 @@ public extension PersistentCache {
                     first: firstBuf.cBuffer,
                     last: lastBuf.cBuffer,
                     wipe: wipe,
-                    durable: durable,
+                    durable: durable
                 )
             }
         }
@@ -223,12 +214,12 @@ public extension PersistentCache {
     ///   - wipe: If `true`, overwrite the page data with zeros.
     ///   - durable: If `true`, block until data is durable on disk.
     ///
-    /// - Throws: ``InvalidCall`` on invalid buffer size; ``DeletePagesError`` on delete failure;
-    ///   ``CommonErrors``, ``POSIXError``, ``SQLiteError``, or ``UnknownLibPCacheError`` from the underlying operation.
+    /// - Throws: ``InvalidCall`` on invalid buffer size; ``DeletePagesError`` on delete failure; ``CommonErrors``,
+    /// ``POSIXError``, ``SQLiteError``, or ``UnknownLibPCacheError`` from the underlying operation.
     func deletePage(
         id: Data,
         wipe: Bool = false,
-        durable: Bool = true,
+        durable: Bool = true
     ) throws {
         try id.withUnsafeBytes { idBuf in
             try deletePage(id: idBuf.cBuffer, wipe: wipe, durable: durable)
@@ -242,12 +233,12 @@ public extension PersistentCache {
     ///   - wipe: If `true`, overwrite the page data with zeros.
     ///   - durable: If `true`, block until data is durable on disk.
     ///
-    /// - Throws: ``InvalidCall`` on invalid buffer size; ``DeletePagesError`` on delete failure;
-    ///   ``CommonErrors``, ``POSIXError``, ``SQLiteError``, or ``UnknownLibPCacheError`` from the underlying operation.
+    /// - Throws: ``InvalidCall`` on invalid buffer size; ``DeletePagesError`` on delete failure; ``CommonErrors``,
+    /// ``POSIXError``, ``SQLiteError``, or ``UnknownLibPCacheError`` from the underlying operation.
     func deletePages(
         ids: Data,
         wipe: Bool = false,
-        durable: Bool = true,
+        durable: Bool = true
     ) throws {
         try ids.withUnsafeBytes { idsBuf in
             try deletePages(ids: idsBuf.cBuffer, wipe: wipe, durable: durable)
@@ -262,13 +253,13 @@ public extension PersistentCache {
     ///   - wipe: If `true`, overwrite the page data with zeros.
     ///   - durable: If `true`, block until data is durable on disk.
     ///
-    /// - Throws: ``InvalidCall`` on invalid buffer size; ``DeletePagesError`` on delete failure;
-    ///   ``CommonErrors``, ``POSIXError``, ``SQLiteError``, or ``UnknownLibPCacheError`` from the underlying operation.
+    /// - Throws: ``InvalidCall`` on invalid buffer size; ``DeletePagesError`` on delete failure; ``CommonErrors``,
+    /// ``POSIXError``, ``SQLiteError``, or ``UnknownLibPCacheError`` from the underlying operation.
     func deletePagesRange(
         first: Data,
         last: Data,
         wipe: Bool = false,
-        durable: Bool = true,
+        durable: Bool = true
     ) throws {
         try first.withUnsafeBytes { firstBuf in
             try last.withUnsafeBytes { lastBuf in
@@ -276,7 +267,7 @@ public extension PersistentCache {
                     first: firstBuf.cBuffer,
                     last: lastBuf.cBuffer,
                     wipe: wipe,
-                    durable: durable,
+                    durable: durable
                 )
             }
         }
@@ -293,12 +284,12 @@ public extension PersistentCache {
     ///   - wipe: If `true`, overwrite the page data with zeros.
     ///   - durable: If `true`, block until data is durable on disk.
     ///
-    /// - Throws: ``InvalidCall`` on invalid buffer size; ``DeletePagesError`` on delete failure;
-    ///   ``CommonErrors``, ``POSIXError``, ``SQLiteError``, or ``UnknownLibPCacheError`` from the underlying operation.
+    /// - Throws: ``InvalidCall`` on invalid buffer size; ``DeletePagesError`` on delete failure; ``CommonErrors``,
+    /// ``POSIXError``, ``SQLiteError``, or ``UnknownLibPCacheError`` from the underlying operation.
     func deletePages(
         ids: [Data],
         wipe: Bool = false,
-        durable: Bool = true,
+        durable: Bool = true
     ) throws {
         guard !ids.isEmpty else { return }
         try validateIDArray(ids)
