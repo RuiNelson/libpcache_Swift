@@ -65,3 +65,20 @@ The type `Handle` is an alias for `pcache_handle` (opaque C type). The `Persiste
 
 - macOS 10.15+, iOS 13+, macCatalyst 13+, tvOS 12+, visionOS 1+, watchOS 4+
 - Depends on `libpcache` (C) linked with `sqlite3` and `pthread` (Linux)
+
+## GitHub Releases
+
+When creating a GitHub release, always follow the format in `Misc/ReleaseTemplate.md`. The `gh` CLI is available.
+
+1. Determine the next version tag (semver, following existing tags).
+2. Read `Misc/ReleaseTemplate.md` and write release notes that match its structure (`What's New`, `Bug Fixes`, `Migration Guide` — omit empty sections).
+3. Note which `libpcache` version the release wraps (check the submodule at `Sources/CLibPCache/libpcache`).
+4. Run `swift test` before publishing.
+5. Create the release:
+
+```bash
+gh release create <version> --title "<version>" --notes "$(cat <<'EOF'
+<release notes here>
+EOF
+)"
+```
