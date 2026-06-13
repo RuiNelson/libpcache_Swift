@@ -208,7 +208,7 @@ public struct Counter: Sendable, Equatable {
         var template = template
 
         if zeroPad > 0 {
-            template.append(contentsOf: .init(repeating: 0, count: zeroPad))
+            template.append(contentsOf: [UInt8](repeating: 0, count: zeroPad))
         }
 
         self.template = template
