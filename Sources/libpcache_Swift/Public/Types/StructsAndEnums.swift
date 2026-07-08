@@ -144,6 +144,8 @@ public enum CapacityPolicy: Sendable, Equatable {
     /// reusable free slots.
     case fixed
     /// Writes beyond ``Configuration/maxPages`` silently evict the oldest page. No explicit capacity error is raised.
+    /// Deletion is costlier than on ``fixed``: each delete call triggers a compaction pass (up to O(live pages) of
+    /// page copies) to keep the eviction order intact.
     case fifo
 }
 

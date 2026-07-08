@@ -13,6 +13,11 @@ public extension PersistentCache {
     ///
     /// If no page with `id` exists, the call is a silent no-op.
     ///
+    /// On ``CapacityPolicy/fifo`` volumes, deletion triggers a compaction pass that relocates live pages to preserve
+    /// the eviction order, making this a potentially costly operation — up to O(live pages) of page copies. Batch
+    /// deletions with ``deletePages(ids:wipe:durable:)`` or ``deletePagesRange(first:last:wipe:durable:)`` to amortize
+    /// that cost.
+    ///
     /// - Parameters:
     ///   - id: Page identifier; must be exactly ``Configuration/idWidthInt`` bytes.
     ///   - wipe: If `true`, overwrite the page data with zeros.
@@ -41,6 +46,9 @@ public extension PersistentCache {
     /// Identifiers that are not present in the volume are silently skipped. The deletions of the matching pages are
     /// committed atomically in a single transaction.
     ///
+    /// On ``CapacityPolicy/fifo`` volumes, one compaction pass follows the deletion to preserve the eviction order,
+    /// costing up to O(live pages) of page copies per call — batching deletions into a single call amortizes it.
+    ///
     /// - Parameters:
     ///   - ids: Page identifiers; must be `count * idWidth` bytes.
     ///   - wipe: If `true`, overwrite the page data with zeros.
@@ -67,6 +75,9 @@ public extension PersistentCache {
     }
 
     /// Deletes multiple pages with identifiers computed from a ``Counter`` template.
+    ///
+    /// On ``CapacityPolicy/fifo`` volumes, one compaction pass follows the deletion to preserve the eviction order,
+    /// costing up to O(live pages) of page copies per call.
     ///
     /// - Parameters:
     ///   - counter: ``Counter`` template and starting value.
@@ -105,6 +116,9 @@ public extension PersistentCache {
     /// Deletes all pages whose identifier falls within the closed interval `[first, last]`.
     ///
     /// Uses byte-by-byte comparison (SQLite BLOB ordering). An empty match is not an error.
+    ///
+    /// On ``CapacityPolicy/fifo`` volumes, one compaction pass follows the deletion to preserve the eviction order,
+    /// costing up to O(live pages) of page copies per call.
     ///
     /// - Parameters:
     ///   - first: Lower bound of the identifier range (inclusive); exactly ``Configuration/idWidthInt`` bytes.

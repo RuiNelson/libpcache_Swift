@@ -15,7 +15,7 @@ let package = Package(
     products: [
         .library(
             name: "libpcache_Swift",
-            targets: ["libpcache_Swift"],
+            targets: ["libpcache_Swift"]
         ),
     ],
     targets: [
@@ -39,15 +39,15 @@ let package = Package(
             linkerSettings: [
                 .linkedLibrary("sqlite3"),
                 .linkedLibrary("pthread", .when(platforms: [.linux])),
-            ],
+            ]
         ),
         .target(
             name: "libpcache_Swift",
-            dependencies: ["CLibPCache"],
+            dependencies: ["CLibPCache"]
         ),
         .testTarget(
             name: "libpcache_SwiftTests",
-            dependencies: ["libpcache_Swift"],
+            dependencies: ["libpcache_Swift"]
         ),
-    ],
+    ]
 )
